@@ -1084,9 +1084,9 @@
             <div class="row align-items-center">
                 <div class="col-lg-6">
                     <!-- Our Experience Image Start -->
-                    <div class="our-experience-img">
-                        <figure>
-                            <img src="/lib/assets/post-3.jpg" alt="">
+                    <div class="our-experience-img" style="position: relative; z-index: 1;">
+                        <figure style="margin: 0; position: relative; box-shadow: 0 20px 35px rgba(0,0,0,0.2); border-radius: 20px; overflow: hidden; transform: translateY(-15px);">
+                            <img src="/lib/assets/post-3.jpg" alt="" style="width: 100%; height: 520px; object-fit: cover; display: block;" />
                         </figure>
                     </div>
                     <!-- Our Experience Image End -->
@@ -1239,261 +1239,33 @@
                     <!-- Section Title Start -->
                     <div class="section-title">
                         <h3 class="wow fadeInUp">our team</h3>
-                        <h2 class="text-anime-style-2" data-cursor="-opaque">The professionals behind <span>every success</span></h2>
+                        <h2 class="text-anime-style-2" data-cursor="-opaque">Meet our <span>CEO</span></h2>
                     </div>
                     <!-- Section Title End -->
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-lg-3 col-md-6">
-                    <!-- Team Member Item Start -->
+            <div class="row justify-content-center">
+                <div class="col-lg-4 col-md-6">
                     <div class="team-member-item wow fadeInUp">
-                        <!-- Team Image Start -->
                         <div class="team-image">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
-                                <figure class="image-anime">
-                                    <img src="/lib/assets/team-1.jpg" alt="">
-                                </figure>
-                            </a>
+                            <figure class="image-anime">
+                                <img src="/lib/assets/ceo-delima.jpeg" alt="CEO Delima" style="width: 100%; border-radius: 12px;" />
+                            </figure>
+                        </div>
 
-                            <!-- Team Readmore Button Start -->
-                            <div class="team-readmore-btn">
-                                <a href="#" on:click|preventDefault><img src="/lib/assets/arrow-white.svg" alt=""></a>
-                            </div>
-                            <!-- Team Readmore Button End -->
-                        </div>	
-                        <!-- Team Image End -->
-
-                        <!-- Team Body Start -->
                         <div class="team-body">
-                            <!-- Team Content Start -->
                             <div class="team-content">
-                                <h3><a href="#" on:click|preventDefault>Cameron williamson</a></h3>
+                                <h3>CEO Delima</h3>
                                 <p>Founder and CEO</p>
                             </div>
-                            <!-- Team Content End -->
-                            
-                            <!-- Team Social Icon Start -->
-                            <div class="team-social-icon">
-                                <ul>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fa-brands fa-instagram"></i></a></li>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fab fa-facebook-f"></i></a></li>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fa-brands fa-dribbble"></i></a></li>
-                                </ul>
-                            </div>
-                            <!-- Team Social Icon End -->
                         </div>
-                        <!-- Team Body End -->
                     </div>
-                    <!-- Team Member Item Start -->
-                </div>
-
-                <div class="col-lg-3 col-md-6">
-                    <!-- Team Member Item Start -->
-                    <div class="team-member-item wow fadeInUp">
-                        <!-- Team Image Start -->
-                        <div class="team-image">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
-                                <figure class="image-anime">
-                                    <img src="/lib/assets/team-2.jpg" alt="">
-                                </figure>
-                            </a>
-
-                            <!-- Team Readmore Button Start -->
-                            <div class="team-readmore-btn">
-                                <a href="#" on:click|preventDefault><img src="/lib/assets/arrow-white.svg" alt=""></a>
-                            </div>
-                            <!-- Team Readmore Button End -->
-                        </div>	
-                        <!-- Team Image End -->
-
-                        <!-- Team Body Start -->
-                        <div class="team-body">
-                            <!-- Team Content Start -->
-                            <div class="team-content">
-                                <h3><a href="#" on:click|preventDefault>Courtney henry</a></h3>
-                                <p>Executive officer</p>
-                            </div>
-                            <!-- Team Content End -->
-                            
-                            <!-- Team Social Icon Start -->
-                            <div class="team-social-icon">
-                                <ul>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fa-brands fa-instagram"></i></a></li>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fab fa-facebook-f"></i></a></li>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fa-brands fa-dribbble"></i></a></li>
-                                </ul>
-                            </div>
-                            <!-- Team Social Icon End -->
-                        </div>
-                        <!-- Team Body End -->
-                    </div>
-                    <!-- Team Member Item Start -->
-                </div>
-
-                <div class="col-lg-3 col-md-6">
-                    <!-- Team Member Item Start -->
-                    <div class="team-member-item wow fadeInUp">
-                        <!-- Team Image Start -->
-                        <div class="team-image">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
-                                <figure class="image-anime">
-                                    <img src="/lib/assets/team-3.jpg" alt="">
-                                </figure>
-                            </a>
-
-                            <!-- Team Readmore Button Start -->
-                            <div class="team-readmore-btn">
-                                <a href="#" on:click|preventDefault><img src="/lib/assets/arrow-white.svg" alt=""></a>
-                            </div>
-                            <!-- Team Readmore Button End -->
-                        </div>	
-                        <!-- Team Image End -->
-
-                        <!-- Team Body Start -->
-                        <div class="team-body">
-                            <!-- Team Content Start -->
-                            <div class="team-content">
-                                <h3><a href="#" on:click|preventDefault>Robert fox</a></h3>
-                                <p>Financial director</p>
-                            </div>
-                            <!-- Team Content End -->
-                            
-                            <!-- Team Social Icon Start -->
-                            <div class="team-social-icon">
-                                <ul>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fa-brands fa-instagram"></i></a></li>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fab fa-facebook-f"></i></a></li>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fa-brands fa-dribbble"></i></a></li>
-                                </ul>
-                            </div>
-                            <!-- Team Social Icon End -->
-                        </div>
-                        <!-- Team Body End -->
-                    </div>
-                    <!-- Team Member Item Start -->
-                </div>
-
-                <div class="col-lg-3 col-md-6">
-                    <!-- Team Member Item Start -->
-                    <div class="team-member-item wow fadeInUp">
-                        <!-- Team Image Start -->
-                        <div class="team-image">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
-                                <figure class="image-anime">
-                                    <img src="/lib/assets/team-4.jpg" alt="">
-                                </figure>
-                            </a>
-
-                            <!-- Team Readmore Button Start -->
-                            <div class="team-readmore-btn">
-                                <a href="#" on:click|preventDefault><img src="/lib/assets/arrow-white.svg" alt=""></a>
-                            </div>
-                            <!-- Team Readmore Button End -->
-                        </div>	
-                        <!-- Team Image End -->
-
-                        <!-- Team Body Start -->
-                        <div class="team-body">
-                            <!-- Team Content Start -->
-                            <div class="team-content">
-                                <h3><a href="#" on:click|preventDefault>Annette black</a></h3>
-                                <p>Managing director</p>
-                            </div>
-                            <!-- Team Content End -->
-                            
-                            <!-- Team Social Icon Start -->
-                            <div class="team-social-icon">
-                                <ul>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fa-brands fa-instagram"></i></a></li>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fab fa-facebook-f"></i></a></li>
-                                    <li><a href="#" aria-label="social-media" on:click|preventDefault><i class="fa-brands fa-dribbble"></i></a></li>
-                                </ul>
-                            </div>
-                            <!-- Team Social Icon End -->
-                        </div>
-                        <!-- Team Body End -->
-                    </div>
-                    <!-- Team Member Item Start -->
                 </div>
             </div>
         </div>
     </div>
     <!-- Our Team Section End -->
-
-    <!-- Our Testimonial Section Start -->
-    <div class="our-testimonial">
-        <div class="container">
-            <div class="row section-row">
-                <div class="col-lg-12">
-                    <!-- Section Title Start -->
-                    <div class="section-title">
-                        <h3 class="wow fadeInUp">testimonials</h3>
-                        <h2 class="text-anime-style-2" data-cursor="-opaque">Hear from those who <span>matter most</span></h2>
-                    </div>
-                    <!-- Section Title End -->
-                </div>
-            </div>
-
-            <div class="row">               
-                <div class="col-lg-12">
-                    <div class="testimonial-slider">
-                        <div class="swiper">
-                            <div class="swiper-wrapper" data-cursor-text="Drag">
-                                <!-- Testimonial Slide Start -->
-                                <div class="swiper-slide">
-                                    <div class="testimonial-item">
-                                        <div class="testimonial-content">
-                                            <p>“ From the moment I contacted them, I knew I was in good hands. The property exceeded all my expectations, and the team's expertise made the entire buying experience seamless. </p>
-                                        </div>
-                                        <div class="author-info">
-                                            <div class="author-image">
-                                                <figure class="image-anime">
-                                                    <img src="/lib/assets/author-1.jpg" alt="">
-                                                </figure>
-                                            </div>            
-                                            <div class="author-content">
-                                                <h3>james d</h3>
-                                                <p>ukco - united kingdom co.</p>
-                                            </div>
-                                        </div>                                    
-                                    </div>
-                                </div>
-                                <!-- Testimonial Slide End -->
-
-                                <!-- Testimonial Slide Start -->
-                                <div class="swiper-slide">
-                                    <div class="testimonial-item">
-                                        <div class="testimonial-content">
-                                            <p>“ From the moment I contacted them, I knew I was in good hands. The property exceeded all my expectations, and the team's expertise made the entire buying experience seamless. </p>
-                                        </div>
-                                        <div class="author-info">
-                                            <div class="author-image">
-                                                <figure class="image-anime">
-                                                    <img src="/lib/assets/author-2.jpg" alt="">
-                                                </figure>
-                                            </div>            
-                                            <div class="author-content">
-                                                <h3>liya allen</h3>
-                                                <p>Marketing manager</p>
-                                            </div>
-                                        </div>                                    
-                                    </div>
-                                </div>
-                                <!-- Testimonial Slide End -->                              
-                            </div>
-                            <div class="testimonial-btn">
-                                <div class="testimonial-btn-prev"></div>
-                                <div class="testimonial-btn-next"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Our Testimonial Section End -->
 
     <!-- Our Faq Section Start -->
     <div class="our-faqs">
