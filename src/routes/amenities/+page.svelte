@@ -16,7 +16,7 @@
                     <!-- Amenties Item Start -->
                     <div class="our-amenities-item wow fadeInUp">
                         <div class="amenities-img">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
+                            <a href="#/" data-cursor-text="View" on:click|preventDefault>
                                 <figure class="image-anime">
                                     <img src="/lib/assets/amenities-1.jpg" alt="">
                                 </figure>

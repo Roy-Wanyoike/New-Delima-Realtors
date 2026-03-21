@@ -8,6 +8,11 @@
 	let loading = false;
 
 	const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+	const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
+
+	if (adminEmail) {
+		email = adminEmail;
+	}
 
 	async function handleLogin() {
 		error = '';
@@ -16,6 +21,11 @@
 		try {
 			if (!email || !password) {
 				error = 'Please fill in all fields';
+				loading = false;
+				return;
+			}
+			if (adminEmail && email !== adminEmail) {
+				error = 'Invalid email';
 				loading = false;
 				return;
 			}
@@ -50,6 +60,7 @@
 					type="email"
 					bind:value={email}
 					placeholder="admin@delimarealtors.com"
+					readonly={adminEmail ? true : undefined}
 					required
 				/>
 			</div>

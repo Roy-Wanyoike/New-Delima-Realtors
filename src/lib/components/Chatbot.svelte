@@ -116,7 +116,7 @@
 				<div class="header-info">
 					<span class="avatar">🏠</span>
 					<div>
-						<h4>Delima Realtors</h4>
+						<h4 style="color:aliceblue;">Delima Realtors</h4>
 						<span class="status">Online</span>
 					</div>
 				</div>

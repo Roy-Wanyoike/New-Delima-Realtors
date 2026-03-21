@@ -244,7 +244,7 @@ body{
     right: 0;
     width: 12px;
     height: 12px;
-    background-image: url('../images/arrow-white.svg');
+    background-image: url('../assets/arrow-white.svg');
     background-repeat: no-repeat;
     background-position: center right;
     background-size: cover;
@@ -265,7 +265,7 @@ body{
 }
 
 .btn-default.btn-highlighted:hover:after{
-	background-image: url('../images/arrow-accent.svg');
+	background-image: url('../assets/arrow-accent.svg');
 }
 
 .cb-cursor:before{
@@ -372,7 +372,7 @@ body{
     top: 50%;
     left: 0;
     transform: translateY(-50%);
-    background: url('../images/icon-sub-heading.svg');
+    background: url('../assets/icon-sub-heading.svg');
     background-repeat: no-repeat;
     background-position: left center;
     background-size: cover;
@@ -416,7 +416,7 @@ body{
 }
 
 .section-title.dark-section h3::before{
-	background: url('../images/icon-sub-heading-dark.svg');
+	background: url('../assets/icon-sub-heading-dark.svg');
 	background-repeat: no-repeat;
     background-position: left center;
     background-size: cover;
@@ -788,7 +788,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 
 .hero{
 	position: relative;
-	background: url('../images/hero-bg.jpg');
+	background: url('../assets/hero-bg.jpg');
 	background-repeat: no-repeat;
 	background-position: center center;
 	background-size: cover;
@@ -972,7 +972,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 /************************************/
 
 .about-us{
-	background: url('../images/about-us-bg.svg') no-repeat;
+	background: url('../assets/about-us-bg.svg') no-repeat;
 	background-position: right center;
 	background-size: auto;
 	padding: 100px 0;
@@ -1178,7 +1178,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 /************************************/
 
 .our-apartments{
-	background: url('../images/section-bg.png'), var(--secondary-color);
+	background: url('../assets/section-bg.png'), var(--secondary-color);
 	background-repeat: no-repeat;
 	background-position: center center;
 	background-size: cover;
@@ -1355,7 +1355,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
     bottom: -50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: url(../images/property-bg-shape.svg) no-repeat;
+    background: url(../assets/property-bg-shape.svg) no-repeat;
     background-size: cover;
     height: 375px;
     width: 375px;
@@ -1463,7 +1463,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 /************************************/
 
 .our-features{
-	background: url('../images/our-features-bg.png'), var(--primary-color);
+	background: url('../assets/our-features-bg.png'), var(--primary-color);
 	background-repeat: no-repeat;
 	background-position: left bottom;
 	background-size: auto;
@@ -1544,7 +1544,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 
 .our-amenities{
 	padding: 100px 0;
-	background: url('../images/section-bg.png'), var(--secondary-color);
+	background: url('../assets/section-bg.png'), var(--secondary-color);
 	background-repeat: no-repeat;
 	background-position: center center;
 	background-size: cover;
@@ -1648,7 +1648,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
     bottom: 0;
     right: 0;
     transform: translateY(-50%) rotate(45deg);
-    background: url('../images/arrow-accent.svg') no-repeat;
+    background: url('../assets/arrow-accent.svg') no-repeat;
     background-position: right center;
     background-size: cover;
     width: 13px;
@@ -1674,7 +1674,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 }
 
 .our-experience-img{
-	background: url('../images/experience-img-bg.png') no-repeat;
+	background: url('../assets/experience-img-bg.png') no-repeat;
 	background-position: bottom left;
 	background-size: auto;
 	padding-left: 150px;
@@ -1777,7 +1777,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 
 .intro-video{
     position: relative;
-    background: url(../images/intro-video-bg.jpg) no-repeat;
+    background: url(../assets/intro-video-bg.jpg) no-repeat;
     background-position: center center;
     background-size: cover;
     padding: 200px 0 100px;
@@ -2024,7 +2024,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 /************************************/
 
 .our-testimonial{
-	background: url('../images/section-bg.png'), var(--secondary-color);
+	background: url('../assets/section-bg.png'), var(--secondary-color);
 	background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
@@ -2235,7 +2235,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 /************************************/
 
 .our-blog{
-	background: url('../images/section-bg.png'), var(--secondary-color);
+	background: url('../assets/section-bg.png'), var(--secondary-color);
 	background-repeat: no-repeat;
 	background-position: center center;
 	padding: 100px 0 70px;
@@ -2339,7 +2339,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 /************************************/
 
 .main-footer{
-    background: url(../images/footer-bg-img.svg) var(--primary-color);
+    background: url(../assets/footer-bg-img.svg) var(--primary-color);
     background-repeat: no-repeat;
     background-position: center center;
     background-size: auto;
@@ -2487,7 +2487,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 
 .page-header{
     position: relative;
-	background: url('../images/page-header-bg.jpg');
+	background: url('../assets/page-header-bg.jpg');
 	background-repeat: no-repeat;
 	background-position: center center;
 	background-size: cover;
@@ -2725,7 +2725,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 
 .cta-box{
     padding: 50px 0 0;
-    background: url(../images/our-features-bg.png), var(--primary-color);
+    background: url(../assets/our-features-bg.png), var(--primary-color);
     background-repeat: no-repeat;
     background-position: left -80px bottom -90px;
     background-size: auto;
@@ -3634,7 +3634,7 @@ header.main-header .header-sticky.active .main-menu ul li a:focus{
 }
 
 .post-entry blockquote{
-	background: url('../images/icon-blockquote.svg'), var(--accent-color);
+	background: url('../assets/icon-blockquote.svg'), var(--accent-color);
 	background-repeat: no-repeat;
 	background-position: 35px 25px;
     background-size: 55px;

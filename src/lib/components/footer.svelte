@@ -10,21 +10,21 @@
             <!-- Company Info -->
             <div class="col-lg-4 col-md-6 mb-4 mb-lg-0">
                 <div style="max-width: 300px;">
-                    <img src="/lib/assets/logo/LogoMakerCa-1771232657338-removebg-preview.png" alt="Delima Realtors" style="height: 60px; margin-bottom: 25px; filter: brightness(0) invert(1);">
+                    <img src="/lib/assets/logo/delima-logo.svg" alt="Delima Realtors" style="height: 90px; margin-bottom: 25px; filter: brightness(0) invert(1);">
                     <p style="color: #aaa; line-height: 1.8; font-size: 0.95rem; margin-bottom: 25px;">
                         Nairobi's premier real estate agency specializing in luxury properties across Westlands, Karen, Kilimani, and exclusive neighborhoods.
                     </p>
                     <div style="display: flex; gap: 15px;">
-                        <a href="#" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
+                        <a href="#/" aria-label="Instagram" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
                             <i class="fab fa-instagram"></i>
                         </a>
-                        <a href="#" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
+                        <a href="#/" aria-label="Facebook" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
                             <i class="fab fa-facebook-f"></i>
                         </a>
-                        <a href="#" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
+                        <a href="#" aria-label="Twitter" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
                             <i class="fab fa-twitter"></i>
                         </a>
-                        <a href="#" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
+                        <a href="#/" aria-label="LinkedIn" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
                             <i class="fab fa-linkedin-in"></i>
                         </a>
                     </div>
@@ -50,6 +50,7 @@
                     <li>
                         <a href="/contact" style="color: #aaa; text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;">Contact</a>
                     </li>
+                    
                 </ul>
             </div>
 
@@ -124,9 +125,10 @@
             </div>
             <div class="col-lg-6">
                 <div style="display: flex; gap: 30px; justify-content: flex-end; flex-wrap: wrap;">
-                    <a href="#" style="color: #888; text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;">Privacy Policy</a>
-                    <a href="#" style="color: #888; text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;">Terms of Service</a>
-                    <a href="#" style="color: #888; text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;">Cookie Policy</a>
+                    <a href="#/privacy-policy" style="color: #888; text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;" aria-label="Privacy Policy">Privacy Policy</a>
+                    <a href="#/terms-of-service" style="color: #888; text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;" aria-label="Terms of Service">Terms of Service</a>
+                    <a href="#/cookie-policy" style="color: #888; text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;" aria-label="Cookie Policy">Cookie Policy</a>
+                    <a href="/admin/login" style="color: #888; text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;" aria-label="Admin Login">Admin Login</a>
                 </div>
             </div>
         </div>

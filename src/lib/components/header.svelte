@@ -4,7 +4,7 @@
 		<div class="loading-container">
 			<div class="loading"></div>
 			<div id="loading-icon">
-				<img src="/lib/assets/logo/LogoMakerCa-1771232657338-removebg-preview.png" alt="Delima Realtors Logo"></div>
+				<img src="/lib/assets/logo/delima-logo.svg" alt="Delima Realtors Logo"></div>
 		</div>
 	</div>
 	<!-- Preloader End -->

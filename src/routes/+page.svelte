@@ -53,7 +53,7 @@
 	<div class="preloader">
 		<div class="loading-container">
 			<div class="loading"></div>
-			<div id="loading-icon"><img src="/lib/assets/logo/LogoMakerCa-1771232657338-removebg-preview.png" alt="Delima Realtors Logo"></div>
+			<div id="loading-icon"><img src="/lib/assets/logo/delima-logo.svg" alt="Delima Realtors Logo"></div>
 		</div>
 	</div>
 	<!-- Preloader End -->
@@ -89,8 +89,8 @@
                     <div class="hero-social-media" style="text-align: right;">
                         <h3 style="color: white; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px;">Follow Us</h3>
                         <ul style="justify-content: flex-end;">
-                            <li><a href="#" title="facebook" on:click|preventDefault style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fab fa-facebook-f"></i></a></li>
-                            <li><a href="#" title="instagram" on:click|preventDefault style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fa-brands fa-instagram"></i></a></li>
+                            <li><a href="#/" title="facebook" on:click|preventDefault style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fab fa-facebook-f"></i></a></li>
+                            <li><a href="#/" title="instagram" on:click|preventDefault style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fa-brands fa-instagram"></i></a></li>
                             <li><a href="#" title="twitter" on:click|preventDefault style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fa-brands fa-twitter"></i></a></li>
                         </ul>
                     </div>
@@ -1086,7 +1086,7 @@
                     <!-- Our Experience Image Start -->
                     <div class="our-experience-img">
                         <figure>
-                            <img src="/lib/assets/experience-img.png" alt="">
+                            <img src="/lib/assets/post-3.jpg" alt="">
                         </figure>
                     </div>
                     <!-- Our Experience Image End -->
