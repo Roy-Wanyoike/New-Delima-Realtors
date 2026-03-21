@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { supabase } from '$lib/supabase';
 
 	let projects: any[] = [];
 	let filteredProjects: any[] = [];
@@ -196,6 +195,15 @@
 
 	async function loadProjects() {
 		try {
+			// Check if Supabase is available
+			const { supabase } = await import('$lib/supabase');
+			if (!supabase) {
+				console.log('Supabase not available, using demo data');
+				projects = demoProjects;
+				applyFilters();
+				return;
+			}
+
 			const { data, error: err } = await supabase
 				.from('projects')
 				.select('*')
@@ -221,7 +229,7 @@
 			console.error('Error loading projects:', err);
 			// Load demo data on error
 			projects = demoProjects;
-			
+
 			// Extract categories from demo data
 			const cats = new Set<string>();
 			projects.forEach(p => {
@@ -229,7 +237,7 @@
 				if (p.location) locations.add(p.location);
 			});
 			categories = Array.from(cats).sort();
-			
+
 			applyFilters();
 		} finally {
 			loading = false;

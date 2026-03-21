@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { supabase } from '$lib/supabase';
 
 	let contacts: any[] = [];
 	let loading = true;
@@ -24,6 +23,12 @@
 
 	async function loadContacts() {
 		try {
+			const { supabase } = await import('$lib/supabase');
+			if (!supabase) {
+				error = 'Database not available';
+				return;
+			}
+
 			let query = supabase.from('contacts').select('*');
 
 			// Apply status filter
@@ -54,6 +59,12 @@
 
 	async function updateStatus(id: string, newStatus: string) {
 		try {
+			const { supabase } = await import('$lib/supabase');
+			if (!supabase) {
+				alert('Database not available');
+				return;
+			}
+
 			const { error: err } = await supabase
 				.from('contacts')
 				.update({ status: newStatus })
@@ -71,6 +82,12 @@
 
 	async function deleteContact(id: string) {
 		try {
+			const { supabase } = await import('$lib/supabase');
+			if (!supabase) {
+				alert('Database not available');
+				return;
+			}
+
 			const { error: err } = await supabase.from('contacts').delete().eq('id', id);
 
 			if (err) throw err;

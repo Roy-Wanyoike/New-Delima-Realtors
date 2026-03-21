@@ -2,7 +2,6 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { adminAuth, logoutAdmin } from '$lib/stores/adminAuth';
-	import { supabase } from '$lib/supabase';
 
 	let isLoggedIn = false;
 	let projects: any[] = [];
@@ -48,6 +47,14 @@
 
 	async function loadProjects() {
 		try {
+			// Check if Supabase is available
+			const { supabase } = await import('$lib/supabase');
+			if (!supabase) {
+				console.log('Supabase not available');
+				error = 'Database not available';
+				return;
+			}
+
 			let query = supabase.from('projects').select('*');
 			
 			const { data, error: err } = await query;
@@ -112,6 +119,11 @@
 	}
 
 	async function uploadImageToSupabase(file: File): Promise<string> {
+		const { supabase } = await import('$lib/supabase');
+		if (!supabase) {
+			throw new Error('Database not available');
+		}
+
 		const fileName = `${Date.now()}-${file.name}`;
 		const { data, error: err } = await supabase.storage
 			.from('project-images')
@@ -145,6 +157,11 @@
 				uploading = true;
 				imageUrl = await uploadImageToSupabase(imageFile);
 				uploading = false;
+			}
+
+			const { supabase } = await import('$lib/supabase');
+			if (!supabase) {
+				throw new Error('Database not available');
 			}
 
 			const dataToSubmit = {
@@ -184,6 +201,11 @@
 		if (!confirm('Are you sure you want to delete this project?')) return;
 
 		try {
+			const { supabase } = await import('$lib/supabase');
+			if (!supabase) {
+				throw new Error('Database not available');
+			}
+
 			const { error: err } = await supabase.from('projects').delete().eq('id', id);
 			if (err) throw err;
 			success = 'Project deleted successfully!';
@@ -195,6 +217,11 @@
 
 	async function toggleFeatured(project: any) {
 		try {
+			const { supabase } = await import('$lib/supabase');
+			if (!supabase) {
+				throw new Error('Database not available');
+			}
+
 			const { error: err } = await supabase
 				.from('projects')
 				.update({ featured: !project.featured })
@@ -211,6 +238,11 @@
 
 	async function updateStatus(id: string, newStatus: string) {
 		try {
+			const { supabase } = await import('$lib/supabase');
+			if (!supabase) {
+				throw new Error('Database not available');
+			}
+
 			const { error: err } = await supabase
 				.from('projects')
 				.update({ status: newStatus })
@@ -312,6 +344,11 @@
 		];
 		
 		try {
+			const { supabase } = await import('$lib/supabase');
+			if (!supabase) {
+				throw new Error('Database not available');
+			}
+
 			const { error: err } = await supabase.from('projects').insert(dummyProjects);
 			if (err) throw err;
 			success = 'Sample properties added successfully!';

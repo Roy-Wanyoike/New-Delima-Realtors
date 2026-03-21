@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { supabase } from '$lib/supabase';
 
 	let project: any = null;
 	let loading = true;
@@ -54,6 +53,13 @@
 
 		submitting = true;
 		try {
+			const { supabase } = await import('$lib/supabase');
+			if (!supabase) {
+				alert('Contact form is currently unavailable. Please try again later.');
+				submitting = false;
+				return;
+			}
+
 			const { error: err } = await supabase.from('contacts').insert([
 				{
 					name: contactForm.name,
