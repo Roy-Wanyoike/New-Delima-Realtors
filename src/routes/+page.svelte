@@ -6,6 +6,7 @@
         import Testimonials from '$lib/components/Testimonials.svelte';
         import Newsletter from '$lib/components/Newsletter.svelte';
         import FAQ from '$lib/components/FAQ.svelte';
+        import StatCounter from '$lib/components/StatCounter.svelte';
 
         // Featured properties data
         const featuredProperties = [
@@ -188,7 +189,27 @@
     </div>
     <!-- Property Search Section End -->
 
-    <!-- Featured Properties Section Start -->
+        <!-- Stats Section -->
+        <section class="home-stats">
+                <div class="container">
+                        <div class="stats-grid">
+                                <div class="stat-item">
+                                        <StatCounter target={500} suffix="+" label="Properties Sold" />
+                                </div>
+                                <div class="stat-item">
+                                        <StatCounter target={12} suffix=" yrs" label="In the Market" />
+                                </div>
+                                <div class="stat-item">
+                                        <StatCounter target={98} suffix="%" label="Client Satisfaction" />
+                                </div>
+                                <div class="stat-item">
+                                        <StatCounter target={8} label="Nairobi Neighborhoods" />
+                                </div>
+                        </div>
+                </div>
+        </section>
+
+        <!-- Featured Properties Section Start -->
     <div class="featured-properties">
         <div class="container">
             <div class="section-title text-center">
@@ -1784,6 +1805,81 @@
 
         .search-box h3 {
             font-size: 22px;
+        }
+    }
+
+    /* Stats section */
+    .home-stats {
+        background: linear-gradient(135deg, #1f1810 0%, #2d2418 100%);
+        padding: 60px 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .home-stats::before {
+        content: '';
+        position: absolute;
+        top: -40%;
+        left: -10%;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(212, 175, 55, 0.12), transparent 70%);
+        border-radius: 50%;
+    }
+
+    .home-stats::after {
+        content: '';
+        position: absolute;
+        bottom: -40%;
+        right: -10%;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(212, 175, 55, 0.1), transparent 70%);
+        border-radius: 50%;
+    }
+
+    .home-stats .container {
+        position: relative;
+        z-index: 1;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 20px;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stat-item:last-child {
+        border-right: none;
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .stat-item {
+            border-right: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 20px;
+        }
+        .stat-item:nth-child(odd) {
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        .stat-item {
+            border-right: none !important;
         }
     }
 </style>

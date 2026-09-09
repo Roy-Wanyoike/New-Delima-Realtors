@@ -5,6 +5,7 @@
         import CompareBar from '$lib/components/CompareBar.svelte';
         import ScrollToTop from '$lib/components/ScrollToTop.svelte';
         import Toaster from '$lib/components/Toaster.svelte';
+        import CookieConsent from '$lib/components/CookieConsent.svelte';
         import { onMount } from 'svelte';
         import { theme } from '$lib/stores/theme';
 
@@ -23,6 +24,7 @@
         <CompareBar />
         <ScrollToTop />
         <Toaster />
+        <CookieConsent />
 </div>
 
 <style>
