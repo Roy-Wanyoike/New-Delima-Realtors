@@ -3,6 +3,8 @@
         import { onMount } from 'svelte';
         import { favorites } from '$lib/stores/favorites';
         import { compare } from '$lib/stores/compare';
+        import Testimonials from '$lib/components/Testimonials.svelte';
+        import Newsletter from '$lib/components/Newsletter.svelte';
 
         // Featured properties data
         const featuredProperties = [
@@ -1525,6 +1527,10 @@
         </div>
     </div>
     <!-- Our Blog Section End -->
+
+        <!-- Testimonials + Newsletter -->
+        <Testimonials />
+        <Newsletter />
 
 <!-- Custom Styles for Homepage -->
 <style>
