@@ -3,6 +3,7 @@
         import { onMount } from 'svelte';
         import { favorites } from '$lib/stores/favorites';
         import { compare } from '$lib/stores/compare';
+        import { recentlyViewed } from '$lib/stores/recentlyViewed';
         import Testimonials from '$lib/components/Testimonials.svelte';
         import Newsletter from '$lib/components/Newsletter.svelte';
         import FAQ from '$lib/components/FAQ.svelte';
@@ -74,6 +75,7 @@
         onMount(() => {
                 favorites.hydrate();
                 compare.hydrate();
+                recentlyViewed.hydrate();
         });
 </script>
 
@@ -209,7 +211,33 @@
                 </div>
         </section>
 
-        <!-- Featured Properties Section Start -->
+	<!-- Recently Viewed Section (only shows if the user has viewed properties) -->
+	{#if $recentlyViewed.length > 0}
+		<section class="recently-viewed-section">
+			<div class="container">
+				<div class="section-title text-center">
+					<h3>Recently viewed</h3>
+					<h2>Pick up where you left off</h2>
+				</div>
+				<div class="rv-grid">
+					{#each $recentlyViewed as prop (prop.id)}
+						<a href="/projects/{prop.id}" class="rv-card">
+							<div class="rv-img">
+								<img src={prop.imageUrl} alt={prop.title} loading="lazy" />
+							</div>
+							<div class="rv-body">
+								<h4>{prop.title}</h4>
+								<p class="rv-loc">📍 {prop.location}</p>
+								<span class="rv-price">KES {formatPrice(prop.price)}</span>
+							</div>
+						</a>
+					{/each}
+				</div>
+			</div>
+		</section>
+	{/if}
+
+	<!-- Featured Properties Section Start -->
     <div class="featured-properties">
         <div class="container">
             <div class="section-title text-center">
@@ -1806,6 +1834,90 @@
         .search-box h3 {
             font-size: 22px;
         }
+    }
+
+    /* Recently viewed section */
+    .recently-viewed-section {
+        padding: 50px 0;
+        background: #fff;
+    }
+
+    .recently-viewed-section .section-title {
+        margin-bottom: 30px;
+    }
+
+    .recently-viewed-section .section-title h3 {
+        color: #d4af37;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        letter-spacing: 2px;
+    }
+
+    .recently-viewed-section .section-title h2 {
+        color: #1f1810;
+        font-size: 1.8rem;
+        margin: 8px 0 0;
+    }
+
+    .rv-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 20px;
+    }
+
+    .rv-card {
+        display: block;
+        background: #f9f9f9;
+        border-radius: 12px;
+        overflow: hidden;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .rv-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+
+    .rv-img {
+        height: 150px;
+        overflow: hidden;
+    }
+
+    .rv-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s;
+    }
+
+    .rv-card:hover .rv-img img {
+        transform: scale(1.06);
+    }
+
+    .rv-body {
+        padding: 14px;
+    }
+
+    .rv-body h4 {
+        margin: 0 0 6px;
+        font-size: 0.9rem;
+        color: #1f1810;
+        line-height: 1.3;
+    }
+
+    .rv-loc {
+        margin: 0 0 8px;
+        font-size: 0.78rem;
+        color: #888;
+    }
+
+    .rv-price {
+        display: block;
+        font-weight: 700;
+        color: #d4af37;
+        font-size: 1rem;
     }
 
     /* Stats section */
