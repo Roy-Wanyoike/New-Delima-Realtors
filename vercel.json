@@ -1,5 +1,5 @@
 {
   "buildCommand": "yarn build",
-  "outputDirectory": ".vercel/output",
-  "framework": "sveltekit"
+  "framework": "sveltekit",
+  "installCommand": "yarn install --frozen-lockfile"
 }
