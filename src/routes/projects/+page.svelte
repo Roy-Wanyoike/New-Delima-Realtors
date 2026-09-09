@@ -212,6 +212,15 @@
                         if (!supabase) {
                                 console.log('Supabase not available, using demo data');
                                 projects = demoProjects;
+
+                                // Extract categories from demo data
+                                const cats = new Set<string>();
+                                projects.forEach((p) => {
+                                        if (p.category) cats.add(p.category);
+                                        if (p.location) locations.add(p.location);
+                                });
+                                categories = Array.from(cats).sort();
+
                                 applyFilters();
                                 return;
                         }
@@ -526,6 +535,16 @@
 
                                 {/if}
 
+                                                <!-- Quick property-type filter chips -->
+                                                {#if categories.length > 0}
+                                                        <div class="type-chips" role="group" aria-label="Filter by property type">
+                                                                <button type="button" class="type-chip" class:active={selectedCategory === ''} on:click={() => { selectedCategory = ''; applyFilters(); }}>All</button>
+                                                                {#each categories as cat}
+                                                                        <button type="button" class="type-chip" class:active={selectedCategory === cat} on:click={() => { selectedCategory = cat; applyFilters(); }}>{cat}</button>
+                                                                {/each}
+                                                        </div>
+                                                {/if}
+
                                         {#if filteredProjects.length === 0}
                                                 <div class="no-results">
                                                         <p>📭 No properties match your search criteria</p>
@@ -802,6 +821,40 @@
         .location-clear:hover {
                 background: #1f1810;
                 color: #fff;
+        }
+
+        /* Quick property-type filter chips */
+        .type-chips {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 24px;
+        }
+
+        .type-chip {
+                padding: 8px 18px;
+                border-radius: 20px;
+                border: 1px solid #e0e0e0;
+                background: #fff;
+                color: #666;
+                cursor: pointer;
+                font-size: 0.85rem;
+                font-weight: 600;
+                transition: all 0.2s;
+                font-family: inherit;
+        }
+
+        .type-chip:hover {
+                border-color: #d4af37;
+                color: #d4af37;
+                transform: translateY(-1px);
+        }
+
+        .type-chip.active {
+                background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+                color: #1f1810;
+                border-color: #d4af37;
+                box-shadow: 0 2px 8px rgba(212, 175, 55, 0.35);
         }
 
         .badge {
