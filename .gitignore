@@ -12,11 +12,20 @@ node_modules
 .DS_Store
 Thumbs.db
 
-# Env
+# Env — real secrets must NEVER be committed. Use .env.example as the template.
 .env
 .env.*
 !.env.example
 !.env.test
+
+# Never commit stray env/notes files (defense-in-depth against past 'test' incident)
+/test
+/test.*
+/secrets*
+*.local
+
+# Lockfile discipline — yarn.lock is canonical; ignore npm's to avoid drift
+package-lock.json
 
 # Vite
 vite.config.js.timestamp-*
