@@ -74,6 +74,9 @@
                         <a href="/services" style="color: #aaa; text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;">Consultations</a>
                     </li>
                     <li>
+                        <a href="/valuation" style="color: #aaa; text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;">Free Valuation</a>
+                    </li>
+                    <li>
                         <a href="/services" style="color: #aaa; text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;">Valuations</a>
                     </li>
                 </ul>

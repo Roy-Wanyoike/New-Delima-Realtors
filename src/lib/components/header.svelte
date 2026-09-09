@@ -50,7 +50,8 @@
                                                                         <li class="nav-item"><a class="nav-link" href="/neighborhoods">Areas</a></li>
                                                                         <li class="nav-item"><a class="nav-link" href="/agents">Agents</a></li>
                                                                         <li class="nav-item"><a class="nav-link" href="/blog">Blog</a></li>
-                                                                        <li class="nav-item"><a class="nav-link" href="/contact">Contact</a></li>
+									<li class="nav-item"><a class="nav-link" href="/valuation">Valuation</a></li>
+									<li class="nav-item"><a class="nav-link" href="/contact">Contact</a></li>
                                                 </ul>
                                         </div>
 
