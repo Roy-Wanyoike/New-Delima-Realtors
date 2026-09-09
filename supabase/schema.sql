@@ -92,3 +92,20 @@ create trigger projects_touch_updated_at
 insert into storage.buckets (id, name, public)
 values ('project-images', 'project-images', true)
 on conflict (id) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- instagram_posts: social feed posts synced from Instagram (or manually added).
+-- ---------------------------------------------------------------------------
+create table if not exists public.instagram_posts (
+    id            uuid primary key default gen_random_uuid(),
+    instagram_id  text        not null unique,            -- IG media ID or 'manual-<timestamp>'
+    caption       text        not null default '',
+    media_url     text        not null,                   -- image URL (Supabase Storage or IG CDN)
+    permalink     text        not null default '',        -- link back to the IG post
+    posted_at     timestamptz not null default now(),     -- when IG posted it
+    tags          text[]      not null default '{}',      -- hashtags extracted from caption
+    created_at    timestamptz not null default now()
+);
+
+create index if not exists instagram_posts_posted_at_idx
+    on public.instagram_posts (posted_at desc);
