@@ -1,31 +1,40 @@
 import { writable } from 'svelte/store';
 
-export const adminAuth = writable<{ isLoggedIn: boolean; adminEmail?: string }>({
-	isLoggedIn: false
-});
+/**
+ * Admin auth store.
+ *
+ * NOTE: This store is a CLIENT-SIDE convenience only and is NOT a security
+ * boundary. Authoritative admin access control is enforced by:
+ *   1. src/routes/admin/+layout.server.ts (server-side route guard), and
+ *   2. Supabase Row-Level Security (supabase/rls.sql) on the data layer.
+ *
+ * The store simply mirrors the Supabase auth session so the UI can react
+ * (e.g. show the logged-in state). It no longer writes a forgeable boolean
+ * flag to localStorage.
+ */
+export interface AdminAuthState {
+	isLoggedIn: boolean;
+	adminEmail?: string;
+}
 
+export const adminAuth = writable<AdminAuthState>({ isLoggedIn: false });
+
+/**
+ * Initialise the store from a known server-validated state (called from
+ * admin layout components that receive `$page.data` from +layout.server.ts).
+ */
+export function setAdminAuth(state: AdminAuthState) {
+	adminAuth.set(state);
+}
+
+// Legacy helpers retained only as no-op stubs for any remaining callers
+// during the migration; new code should read $page.data instead.
 export function checkAdminAuth() {
-	if (typeof window !== 'undefined') {
-		const stored = localStorage.getItem('admin_auth');
-		if (stored) {
-			adminAuth.set(JSON.parse(stored));
-			return true;
-		}
-	}
 	return false;
 }
-
-export function loginAdmin(email: string) {
-	const auth = { isLoggedIn: true, adminEmail: email };
-	adminAuth.set(auth);
-	if (typeof window !== 'undefined') {
-		localStorage.setItem('admin_auth', JSON.stringify(auth));
-	}
+export function loginAdmin(_email: string) {
+	// no-op — use Supabase Auth (supabase.auth.signInWithPassword) in /admin/login.
 }
-
 export function logoutAdmin() {
-	adminAuth.set({ isLoggedIn: false });
-	if (typeof window !== 'undefined') {
-		localStorage.removeItem('admin_auth');
-	}
+	// no-op — use the layout's handleLogout (supabase.auth.signOut + cookie clear).
 }
