@@ -45,7 +45,8 @@
 							<li class="nav-item"><a class="nav-link" href="/about">About</a></li>
 							<li class="nav-item"><a class="nav-link" href="/services">Services</a></li>
 							<li class="nav-item"><a class="nav-link" href="/projects">Properties</a></li>
-							<li class="nav-item"><a class="nav-link" href="/contact">Contact</a></li>
+									<li class="nav-item"><a class="nav-link" href="/neighborhoods">Areas</a></li>
+									<li class="nav-item"><a class="nav-link" href="/contact">Contact</a></li>
 						</ul>
 					</div>
 

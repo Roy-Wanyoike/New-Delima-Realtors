@@ -186,6 +186,8 @@
         let minPrice = '';
         let maxPrice = '';
         let minBeds = '';
+        let sortBy = 'featured'; // 'featured' | 'price-asc' | 'price-desc' | 'beds-desc'
+        let featuredOnly = false;
 
         // Categories from projects
         let categories: string[] = [];
@@ -249,7 +251,7 @@
 
         function applyFilters() {
                 filteredProjects = projects.filter(project => {
-                        const matchesSearch = !searchTerm || 
+                        const matchesSearch = !searchTerm ||
                                 project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                 project.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                 project.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -263,7 +265,25 @@
                         const beds = parseInt(project.bedrooms) || 0;
                         const matchesBeds = !minBeds || beds >= parseInt(minBeds);
 
-                        return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesBeds;
+                        const matchesFeatured = !featuredOnly || project.featured === true;
+
+                        return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesBeds && matchesFeatured;
+                });
+
+                // Sort the filtered results
+                filteredProjects = [...filteredProjects].sort((a, b) => {
+                        const pa = parseInt(a.price) || 0;
+                        const pb = parseInt(b.price) || 0;
+                        const ba = parseInt(a.bedrooms) || 0;
+                        const bb = parseInt(b.bedrooms) || 0;
+                        switch (sortBy) {
+                                case 'price-asc': return pa - pb;
+                                case 'price-desc': return pb - pa;
+                                case 'beds-desc': return bb - ba;
+                                case 'featured':
+                                default:
+                                        return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
+                        }
                 });
         }
 
@@ -273,6 +293,8 @@
                 minPrice = '';
                 maxPrice = '';
                 minBeds = '';
+                sortBy = 'featured';
+                featuredOnly = false;
                 applyFilters();
         }
 
@@ -367,9 +389,71 @@
                                                 />
                                         </div>
 
+                                        <!-- Sort -->
+
+
+                                        <div class="filter-group">
+
+
+                                                <label for="sort">Sort by</label>
+
+
+                                                <select id="sort" bind:value={sortBy} on:change={applyFilters}>
+
+
+                                                        <option value="featured">Featured first</option>
+
+
+                                                        <option value="price-asc">Price: Low to High</option>
+
+
+                                                        <option value="price-desc">Price: High to Low</option>
+
+
+                                                        <option value="beds-desc">Most Bedrooms</option>
+
+
+                                                </select>
+
+
+                                        </div>
+
+
+
+                                        <!-- Featured-only toggle -->
+
+
+                                        <div class="filter-group toggle-group">
+
+
+                                                <label for="featured-only" class="toggle-label">
+
+
+                                                        <input id="featured-only" type="checkbox" bind:checked={featuredOnly} on:change={applyFilters} />
+
+
+                                                        <span class="toggle-switch" aria-hidden="true"></span>
+
+
+                                                        <span>Featured only ⭐</span>
+
+
+                                                </label>
+
+
+                                        </div>
+
+
+
                                         <!-- Clear Filters -->
-                                        {#if searchTerm || selectedCategory || minPrice || maxPrice || minBeds}
+
+
+                                        {#if searchTerm || selectedCategory || minPrice || maxPrice || minBeds || featuredOnly}
+
+
                                                 <button class="btn-clear" on:click={resetFilters}>Clear Filters</button>
+
+
                                         {/if}
                                 </div>
                         </aside>
@@ -562,6 +646,64 @@
         .btn-clear:hover {
                 background: #c4991c;
                 transform: translateY(-1px);
+        }
+
+        /* Toggle switch (featured-only) */
+        .toggle-group {
+                margin-top: 8px;
+        }
+
+        .toggle-label {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                cursor: pointer;
+                font-size: 0.9rem;
+                color: #1f1810;
+                user-select: none;
+        }
+
+        .toggle-label input[type='checkbox'] {
+                position: absolute;
+                opacity: 0;
+                width: 0;
+                height: 0;
+        }
+
+        .toggle-switch {
+                position: relative;
+                width: 42px;
+                height: 24px;
+                background: #ccc;
+                border-radius: 12px;
+                transition: background 0.25s ease;
+                flex-shrink: 0;
+        }
+
+        .toggle-switch::before {
+                content: '';
+                position: absolute;
+                top: 3px;
+                left: 3px;
+                width: 18px;
+                height: 18px;
+                background: #fff;
+                border-radius: 50%;
+                transition: transform 0.25s ease;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .toggle-label input:checked ~ .toggle-switch {
+                background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+        }
+
+        .toggle-label input:checked ~ .toggle-switch::before {
+                transform: translateX(18px);
+        }
+
+        .toggle-label input:focus-visible ~ .toggle-switch {
+                outline: 2px solid #d4af37;
+                outline-offset: 2px;
         }
 
         /* Main Content */
