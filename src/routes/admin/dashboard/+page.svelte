@@ -1,10 +1,11 @@
 <script lang="ts">
         import { goto } from '$app/navigation';
         import { onMount } from 'svelte';
-        import { adminAuth, logoutAdmin } from '$lib/stores/adminAuth';
+        import { page } from '$app/stores';
         import type { Project } from '$lib/types';
 
-        let isLoggedIn = false;
+        // Server-validated by /admin/+layout.server.ts.
+        $: isLoggedIn = $page.data?.isAdmin ?? false;
         let projects: Project[] = [];
         let loading = false;
         let showForm = false;
@@ -36,13 +37,10 @@
         let sortBy = 'recent';
 
         onMount(() => {
-                adminAuth.subscribe((auth) => {
-                        isLoggedIn = auth.isLoggedIn;
-                        if (!isLoggedIn) {
-                                goto('/admin/login');
-                        }
-                });
-
+                if (!isLoggedIn) {
+                        goto('/admin/login');
+                        return;
+                }
                 loadProjects();
         });
 
@@ -372,11 +370,6 @@
                         loading = false;
                 }
         }
-
-        function handleLogout() {
-                logoutAdmin();
-                goto('/admin/login');
-        }
 </script>
 
 {#if isLoggedIn}
@@ -384,7 +377,6 @@
                 <header class="admin-header">
                         <div class="header-content">
                                 <h1>📊 Project Management</h1>
-                                <button on:click={handleLogout} class="logout-btn">Logout</button>
                         </div>
                 </header>
 
