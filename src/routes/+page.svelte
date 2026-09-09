@@ -1,62 +1,86 @@
 
 <script lang="ts">
-	// Featured properties data
-	const featuredProperties = [
-		{
-			id: 'koch-1',
-			title: '2, 3 & 4 Bedroom Apartments',
-			location: 'Westlands, Nairobi',
-			price: '17700000',
-			bedrooms: '3',
-			bathrooms: '2',
-			imageUrl: '/lib/assets/project-1.jpg'
-		},
-		{
-			id: 'koch-3',
-			title: 'Luxury Apartments with DSQs',
-			location: 'Kilimani, Nairobi',
-			price: '29400000',
-			bedrooms: '4',
-			bathrooms: '3',
-			imageUrl: '/lib/assets/apartments-3.jpg'
-		},
-		{
-			id: 'koch-6',
-			title: '5 Bedroom Villa with Pool',
-			location: 'Loresho, Nairobi',
-			price: '150000000',
-			bedrooms: '5',
-			bathrooms: '6',
-			imageUrl: '/lib/assets/project-2.jpg'
-		}
-	];
+        import { onMount } from 'svelte';
+        import { favorites } from '$lib/stores/favorites';
+        import { compare } from '$lib/stores/compare';
 
-	// Search filter values
-	let searchLocation = '';
-	let searchType = '';
-	let searchBeds = '';
-	let searchMaxPrice = '';
+        // Featured properties data
+        const featuredProperties = [
+                {
+                        id: 'koch-1',
+                        title: '2, 3 & 4 Bedroom Apartments',
+                        description: 'Modern apartments in the heart of Westlands.',
+                        location: 'Westlands, Nairobi',
+                        price: '17700000',
+                        bedrooms: '3',
+                        bathrooms: '2',
+                        imageUrl: '/lib/assets/project-1.jpg',
+                        category: 'Apartment',
+                        status: 'published' as const,
+                        featured: true,
+                        amenities: 'Parking, Lift, Generator, Borehole, Gym, CCTV'
+                },
+                {
+                        id: 'koch-3',
+                        title: 'Luxury Apartments with DSQs',
+                        description: 'Luxury apartments in Kilimani with rooftop terrace.',
+                        location: 'Kilimani, Nairobi',
+                        price: '29400000',
+                        bedrooms: '4',
+                        bathrooms: '3',
+                        imageUrl: '/lib/assets/apartments-3.jpg',
+                        category: 'Apartment',
+                        status: 'published' as const,
+                        featured: true,
+                        amenities: 'DSQ, Swimming Pool, Gym, Parking, Solar'
+                },
+                {
+                        id: 'koch-6',
+                        title: '5 Bedroom Villa with Pool',
+                        description: 'Magnificent villa in Loresho on half-acre land.',
+                        location: 'Loresho, Nairobi',
+                        price: '150000000',
+                        bedrooms: '5',
+                        bathrooms: '6',
+                        imageUrl: '/lib/assets/project-2.jpg',
+                        category: 'Villa',
+                        status: 'published' as const,
+                        featured: true,
+                        amenities: 'Swimming Pool, Garden, Guest House, Parking, Security'
+                }
+        ];
 
-	function filterProperties() {
-		// Filters are handled on the projects page
-		// This function can be expanded to filter on homepage
-	}
+        // Search filter values
+        let searchLocation = '';
+        let searchType = '';
+        let searchBeds = '';
+        let searchMaxPrice = '';
 
-	function formatPrice(price: string | number | undefined): string {
-		if (!price) return '0';
-		const num = typeof price === 'string' ? parseInt(price) : price;
-		return isNaN(num) ? '0' : num.toLocaleString();
-	}
+        function filterProperties() {
+                // Filters are handled on the projects page
+                // This function can be expanded to filter on homepage
+        }
+
+        function formatPrice(price: string | number | undefined): string {
+                if (!price) return '0';
+                const num = typeof price === 'string' ? parseInt(price) : price;
+                return isNaN(num) ? '0' : num.toLocaleString();
+        }
+
+        onMount(() => {
+                favorites.hydrate();
+                compare.hydrate();
+        });
 </script>
 
     <!-- Preloader Start -->
-	<div class="preloader">
-		<div class="loading-container">
-			<div class="loading"></div>
-			<div id="loading-icon"><img src="/lib/assets/logo/delima-logo.svg" alt="Delima Realtors Logo"></div>
-		</div>
-	</div>
-	<!-- Preloader End -->
+        <div class="preloader">
+                <div class="loading-container">
+                        <div class="loading"></div>
+                        <div id="loading-icon"><img src="/lib/assets/logo/delima-logo.svg" alt="Delima Realtors Logo"></div>
+                </div>
+        </div>
+        <!-- Preloader End -->
 
 
     <!-- Hero Section Start -->
@@ -170,27 +194,35 @@
             </div>
             
             <div class="row">
-                {#each featuredProperties as property}
-                    <div class="col-lg-4 col-md-6 mb-4">
-                        <div class="property-card wow fadeInUp">
-                            <div class="card-image">
-                                <img src={property.imageUrl} alt={property.title} />
-                                <div class="featured-tag">⭐ Featured</div>
-                                <div class="price-tag">KES {formatPrice(property.price)}</div>
-                            </div>
-                            <div class="card-content">
-                                <h4>{property.title}</h4>
-                                <p class="location">📍 {property.location}</p>
-                                <div class="specs">
-                                    <span>🛏️ {property.bedrooms} Beds</span>
-                                    <span>🚿 {property.bathrooms} Baths</span>
-                                </div>
-                                <a href="/projects/{property.id}" class="btn-view">View Details</a>
-                            </div>
+                                {#each featuredProperties as property (property.id)}
+                                        <div class="col-lg-4 col-md-6 mb-4">
+                                                <div class="property-card wow fadeInUp home-fp-card">
+                                                        <div class="card-image">
+                                                                <a href="/projects/{property.id}">
+                                                                        <img src={property.imageUrl} alt={property.title} />
+                                                                </a>
+                                                                <div class="featured-tag">⭐ Featured</div>
+                                                                <div class="price-tag">KES {formatPrice(property.price)}</div>
+                                                                <button type="button" class="home-card-action home-fav" class:active={$favorites.includes(property.id)} aria-label={$favorites.includes(property.id) ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={$favorites.includes(property.id)} on:click|stopPropagation={() => favorites.toggle(property.id)}>
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill={$favorites.includes(property.id) ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                                                                </button>
+                                                                <button type="button" class="home-card-action home-cmp" class:active={$compare.some((p) => p.id === property.id)} class:disabled={$compare.length >= 3 && !$compare.some((p) => p.id === property.id)} aria-label={$compare.some((p) => p.id === property.id) ? 'Remove from comparison' : 'Add to comparison'} aria-pressed={$compare.some((p) => p.id === property.id)} on:click|stopPropagation={() => compare.toggle(property)}>
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="18" rx="1" /><rect x="14" y="3" width="7" height="18" rx="1" /></svg>
+                                                                </button>
+                                                        </div>
+                                                        <div class="card-content">
+                                                                <h4>{property.title}</h4>
+                                                                <p class="location">📍 {property.location}</p>
+                                                                <div class="specs">
+                                                                        <span>🛏️ {property.bedrooms} Beds</span>
+                                                                        <span>🚿 {property.bathrooms} Baths</span>
+                                                                </div>
+                                                                <a href="/projects/{property.id}" class="btn-view">View Details</a>
+                                                        </div>
+                                                </div>
+                                        </div>
+                                {/each}
                         </div>
-                    </div>
-                {/each}
-            </div>
             
             <div class="text-center mt-4">
                 <a href="/projects" class="btn-default">View All Properties</a>
@@ -1638,6 +1670,44 @@
         font-weight: 600;
         font-size: 14px;
     }
+
+        /* Home featured-card fav + compare action buttons */
+        .home-fp-card .card-image {
+                position: relative;
+        }
+
+        .home-card-action {
+                position: absolute;
+                top: 12px;
+                width: 34px;
+                height: 34px;
+                border-radius: 50%;
+                border: none;
+                background: rgba(255, 255, 255, 0.92);
+                color: #1f1810;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.25s ease;
+                backdrop-filter: blur(4px);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+                z-index: 5;
+        }
+
+        .home-fav { right: 12px; }
+        .home-cmp { right: 50px; }
+
+        .home-card-action:hover {
+                background: #fff;
+                transform: scale(1.12);
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+        }
+
+        .home-fav.active { background: #dc3545; color: #fff; }
+        .home-cmp.active { background: #d4af37; color: #1f1810; }
+        .home-cmp.disabled { opacity: 0.4; cursor: not-allowed; }
+        .home-cmp.disabled:hover { transform: none; }
 
     .card-content {
         padding: 25px;

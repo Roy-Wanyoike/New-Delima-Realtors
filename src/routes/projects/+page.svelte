@@ -1,5 +1,7 @@
 <script lang="ts">
         import { onMount } from 'svelte';
+        import { page } from '$app/stores';
+        import { goto } from '$app/navigation';
         import { favorites } from '$lib/stores/favorites';
         import { compare } from '$lib/stores/compare';
 
@@ -7,6 +9,10 @@
         let filteredProjects: any[] = [];
         let loading = true;
         let error = '';
+
+        // Read ?location= from the URL to pre-filter (set by /neighborhoods cards).
+        let locationFilter = $page.url.searchParams.get('location') ?? '';
+        $: locationFilter = $page.url.searchParams.get('location') ?? '';
 
         // Demo projects - Koch Properties Listings
         const demoProjects = [
@@ -195,6 +201,7 @@
 
         onMount(async () => {
                 favorites.hydrate();
+                compare.hydrate();
                 await loadProjects();
         });
 
@@ -256,6 +263,10 @@
                                 project.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                 project.description.toLowerCase().includes(searchTerm.toLowerCase());
 
+                        // Location filter from ?location= query param (set by /neighborhoods).
+                        const matchesLocation = !locationFilter ||
+                                project.location.toLowerCase().includes(locationFilter.toLowerCase());
+
                         const matchesCategory = !selectedCategory || project.category === selectedCategory;
 
                         const price = parseInt(project.price) || 0;
@@ -267,7 +278,7 @@
 
                         const matchesFeatured = !featuredOnly || project.featured === true;
 
-                        return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesBeds && matchesFeatured;
+                        return matchesSearch && matchesLocation && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesBeds && matchesFeatured;
                 });
 
                 // Sort the filtered results
@@ -300,6 +311,21 @@
 
         function formatPrice(price: string) {
                 return parseInt(price).toLocaleString();
+        }
+
+        // Re-apply filters whenever the URL ?location= changes (locationFilter is
+        // referenced explicitly so Svelte tracks it as a reactive dependency).
+        $: if (projects.length > 0 && locationFilter !== undefined) {
+                applyFilters();
+        }
+
+        function clearLocationFilter() {
+                // Use goto with replaceState so SvelteKit's $page store updates and
+                // the reactive locationFilter re-derives (history.replaceState alone
+                // wouldn't trigger the store).
+                const url = new URL(window.location.href);
+                url.searchParams.delete('location');
+                goto(url.pathname + url.search, { replaceState: true, keepFocus: true, noScroll: true });
         }
 </script>
 
@@ -487,6 +513,18 @@
                                                         <span class="badge">{projects.length}</span> properties
                                                 </p>
                                         </div>
+
+                                {#if locationFilter}
+
+                                        <div class="location-banner" role="status">
+
+                                                <span>📍 Filtering by area: <strong>{locationFilter}</strong></span>
+
+                                                <button type="button" class="location-clear" on:click={clearLocationFilter}>✕ Clear</button>
+
+                                        </div>
+
+                                {/if}
 
                                         {#if filteredProjects.length === 0}
                                                 <div class="no-results">
@@ -722,6 +760,48 @@
                 color: #666;
                 font-size: 14px;
                 margin: 0;
+        }
+
+        .location-banner {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                background: linear-gradient(135deg, rgba(212, 175, 55, 0.12), rgba(212, 175, 55, 0.06));
+                border: 1px solid rgba(212, 175, 55, 0.35);
+                color: #1f1810;
+                padding: 12px 18px;
+                border-radius: 10px;
+                margin-bottom: 20px;
+                font-size: 0.9rem;
+                animation: banner-slide 0.3s ease;
+        }
+
+        @keyframes banner-slide {
+                from { opacity: 0; transform: translateY(-8px); }
+                to { opacity: 1; transform: translateY(0); }
+        }
+
+        .location-banner strong {
+                color: #8a6d10;
+        }
+
+        .location-clear {
+                background: rgba(31, 24, 16, 0.08);
+                color: #1f1810;
+                border: none;
+                padding: 6px 14px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 0.8rem;
+                font-weight: 600;
+                transition: all 0.2s;
+                flex-shrink: 0;
+        }
+
+        .location-clear:hover {
+                background: #1f1810;
+                color: #fff;
         }
 
         .badge {
