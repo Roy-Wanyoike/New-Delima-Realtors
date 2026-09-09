@@ -1,6 +1,7 @@
 <script lang="ts">
         import { page } from '$app/stores';
         import { onMount } from 'svelte';
+        import MortgageCalculator from '$lib/components/MortgageCalculator.svelte';
 
         let project: any = null;
         let loading = true;
@@ -195,7 +196,14 @@
                                         </section>
                                 </article>
 
-                                <!-- Right Column - Sidebar -->
+			<!-- Mortgage Calculator -->
+			{#if project?.price}
+				<section class="mortgage-section" style="margin: 40px 0;">
+					<MortgageCalculator price={parseInt(project.price)} />
+				</section>
+			{/if}
+
+			<!-- Right Column - Sidebar --> - Sidebar -->
                                 <aside class="detail-sidebar">
                                         <div class="contact-card">
                                                 <h3>Interested in this property?</h3>

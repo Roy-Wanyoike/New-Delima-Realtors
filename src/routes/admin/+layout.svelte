@@ -3,8 +3,11 @@
         import { goto } from '$app/navigation';
 
         // $page.data is populated by +layout.server.ts (the server-side guard).
-        // If we got here at all, the guard has confirmed isAdmin === true.
+        // The login route is exempted by the guard and returns isAdmin:false,
+        // so it must render its own content WITHOUT the admin topbar — otherwise
+        // the {#if isAdmin} branch would hide the login form.
         let data = $page.data as { isAdmin?: boolean; adminEmail?: string };
+        $: isLoginRoute = $page.route?.id === '/admin/login';
 
         async function handleLogout() {
                 try {
@@ -21,7 +24,10 @@
         }
 </script>
 
-{#if data?.isAdmin}
+{#if isLoginRoute}
+        <!-- Login page renders bare (no admin topbar) so the form is reachable. -->
+        <slot />
+{:else if data?.isAdmin}
         <div class="admin-shell">
                 <header class="admin-topbar">
                         <a href="/admin" class="admin-brand">

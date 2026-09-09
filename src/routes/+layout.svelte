@@ -1,12 +1,29 @@
-<script>
-import Header from '$lib/components/header.svelte';   
-import Footer from '$lib/components/footer.svelte';
-import Chatbot from '$lib/components/Chatbot.svelte';
+<script lang="ts">
+	import Header from '$lib/components/header.svelte';
+	import Footer from '$lib/components/footer.svelte';
+	import Chatbot from '$lib/components/Chatbot.svelte';
+	import CompareBar from '$lib/components/CompareBar.svelte';
 </script>
 
-<Header></Header>
-<main style="padding-top: 0;">
-	<slot/>
-</main>
-<Footer/>
-<Chatbot />
+<div class="app-shell">
+	<Header />
+	<main class="app-main">
+		<slot />
+	</main>
+	<Footer />
+	<Chatbot />
+	<CompareBar />
+</div>
+
+<style>
+	.app-shell {
+		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.app-main {
+		flex: 1;
+		padding-top: 0;
+	}
+</style>
