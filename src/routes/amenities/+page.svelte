@@ -16,19 +16,19 @@
                     <!-- Amenties Item Start -->
                     <div class="our-amenities-item wow fadeInUp">
                         <div class="amenities-img">
-                            <a href="#/" data-cursor-text="View" on:click|preventDefault>
+                            <a href="/projects" data-cursor-text="View">
                                 <figure class="image-anime">
-                                    <img src="/lib/assets/amenities-1.jpg" alt="">
+                                    <img src="/lib/assets/amenities-1.jpg" alt="Property Search — ">
                                 </figure>
                             </a>
                         </div>
                         <div class="amenities-content">
                             <div class="amenities-item-title">
-                                <h3><a href="#" on:click|preventDefault>Property Search</a></h3>
+                                <h3><a href="/services">Property Search</a></h3>
                                 <p style="color: #999; font-size: 0.85rem; margin-top: 5px;">Personalized property matching</p>
                             </div>
                             <div class="amenities-btn">
-                                <a href="#" on:click|preventDefault><img src="/lib/assets/arrow-white.svg" alt=""></a>
+                                <a href="/contact" aria-label="Inquire about this service"><img src="/lib/assets/arrow-white.svg" alt="" aria-hidden="true"></a>
                             </div>
                         </div>
                     </div>
@@ -39,19 +39,19 @@
                     <!-- Amenties Item Start -->
                     <div class="our-amenities-item wow fadeInUp" data-wow-delay="0.2s">
                         <div class="amenities-img">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
+                            <a href="/projects" data-cursor-text="View">
                                 <figure class="image-anime">
-                                    <img src="/lib/assets/amenities-2.jpg" alt="">
+                                    <img src="/lib/assets/amenities-2.jpg" alt="Investment Advisory — ">
                                 </figure>
                             </a>
                         </div>
                         <div class="amenities-content">
                             <div class="amenities-item-title">
-                                <h3><a href="#" on:click|preventDefault>Investment Advisory</a></h3>
+                                <h3><a href="/services">Investment Advisory</a></h3>
                                 <p style="color: #999; font-size: 0.85rem; margin-top: 5px;">ROI-focused guidance</p>
                             </div>
                             <div class="amenities-btn">
-                                <a href="#" on:click|preventDefault><img src="/lib/assets/arrow-white.svg" alt=""></a>
+                                <a href="/contact" aria-label="Inquire about this service"><img src="/lib/assets/arrow-white.svg" alt="" aria-hidden="true"></a>
                             </div>
                         </div>
                     </div>
@@ -62,19 +62,19 @@
                     <!-- Amenties Item Start -->
                     <div class="our-amenities-item wow fadeInUp" data-wow-delay="0.4s">
                         <div class="amenities-img">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
+                            <a href="/projects" data-cursor-text="View">
                                 <figure class="image-anime">
-                                    <img src="/lib/assets/amenities-3.jpg" alt="">
+                                    <img src="/lib/assets/amenities-3.jpg" alt="Legal Support — ">
                                 </figure>
                             </a>
                         </div>
                         <div class="amenities-content">
                             <div class="amenities-item-title">
-                                <h3><a href="#" on:click|preventDefault>Legal Support</a></h3>
+                                <h3><a href="/services">Legal Support</a></h3>
                                 <p style="color: #999; font-size: 0.85rem; margin-top: 5px;">Full transaction coordination</p>
                             </div>
                             <div class="amenities-btn">
-                                <a href="#" on:click|preventDefault><img src="/lib/assets/arrow-white.svg" alt=""></a>
+                                <a href="/contact" aria-label="Inquire about this service"><img src="/lib/assets/arrow-white.svg" alt="" aria-hidden="true"></a>
                             </div>
                         </div>
                     </div>
@@ -85,19 +85,19 @@
                     <!-- Amenties Item Start -->
                     <div class="our-amenities-item wow fadeInUp" data-wow-delay="0.6s">
                         <div class="amenities-img">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
+                            <a href="/projects" data-cursor-text="View">
                                 <figure class="image-anime">
-                                    <img src="/lib/assets/amenities-4.jpg" alt="">
+                                    <img src="/lib/assets/amenities-4.jpg" alt="Market Analysis — ">
                                 </figure>
                             </a>
                         </div>
                         <div class="amenities-content">
                             <div class="amenities-item-title">
-                                <h3><a href="#" on:click|preventDefault>Market Analysis</a></h3>
+                                <h3><a href="/services">Market Analysis</a></h3>
                                 <p style="color: #999; font-size: 0.85rem; margin-top: 5px;">Real-time market insights</p>
                             </div>
                             <div class="amenities-btn">
-                                <a href="#" on:click|preventDefault><img src="/lib/assets/arrow-white.svg" alt=""></a>
+                                <a href="/contact" aria-label="Inquire about this service"><img src="/lib/assets/arrow-white.svg" alt="" aria-hidden="true"></a>
                             </div>
                         </div>
                     </div>
@@ -108,19 +108,19 @@
                     <!-- Amenties Item Start -->
                     <div class="our-amenities-item wow fadeInUp" data-wow-delay="0.8s">
                         <div class="amenities-img">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
+                            <a href="/projects" data-cursor-text="View">
                                 <figure class="image-anime">
-                                    <img src="/lib/assets/amenities-5.jpg" alt="">
+                                    <img src="/lib/assets/amenities-5.jpg" alt="Financing Advisory — ">
                                 </figure>
                             </a>
                         </div>
                         <div class="amenities-content">
                             <div class="amenities-item-title">
-                                <h3><a href="#" on:click|preventDefault>Financing Advisory</a></h3>
+                                <h3><a href="/services">Financing Advisory</a></h3>
                                 <p style="color: #999; font-size: 0.85rem; margin-top: 5px;">Mortgage & loan guidance</p>
                             </div>
                             <div class="amenities-btn">
-                                <a href="#" on:click|preventDefault><img src="/lib/assets/arrow-white.svg" alt=""></a>
+                                <a href="/contact" aria-label="Inquire about this service"><img src="/lib/assets/arrow-white.svg" alt="" aria-hidden="true"></a>
                             </div>
                         </div>
                     </div>
@@ -131,19 +131,19 @@
                     <!-- Amenties Item Start -->
                     <div class="our-amenities-item wow fadeInUp" data-wow-delay="1s">
                         <div class="amenities-img">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
+                            <a href="/projects" data-cursor-text="View">
                                 <figure class="image-anime">
-                                    <img src="/lib/assets/amenities-6.jpg" alt="">
+                                    <img src="/lib/assets/amenities-6.jpg" alt="Relocation Support — ">
                                 </figure>
                             </a>
                         </div>
                         <div class="amenities-content">
                             <div class="amenities-item-title">
-                                <h3><a href="#" on:click|preventDefault>Relocation Support</a></h3>
+                                <h3><a href="/services">Relocation Support</a></h3>
                                 <p style="color: #999; font-size: 0.85rem; margin-top: 5px;">Seamless moving assistance</p>
                             </div>
                             <div class="amenities-btn">
-                                <a href="#" on:click|preventDefault><img src="/lib/assets/arrow-white.svg" alt=""></a>
+                                <a href="/contact" aria-label="Inquire about this service"><img src="/lib/assets/arrow-white.svg" alt="" aria-hidden="true"></a>
                             </div>
                         </div>
                     </div>

@@ -15,16 +15,16 @@
                         Nairobi's premier real estate agency specializing in luxury properties across Westlands, Karen, Kilimani, and exclusive neighborhoods.
                     </p>
                     <div style="display: flex; gap: 15px;">
-                        <a href="#/" aria-label="Instagram" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
+                        <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Delima Realtors on Instagram" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
                             <i class="fab fa-instagram"></i>
                         </a>
-                        <a href="#/" aria-label="Facebook" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
+                        <a href="https://www.facebook.com/"  target="_blank" rel="noopener noreferrer" aria-label="Delima Realtors on Facebook" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
                             <i class="fab fa-facebook-f"></i>
                         </a>
-                        <a href="#" aria-label="Twitter" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
+                        <a href="https://twitter.com/"       target="_blank" rel="noopener noreferrer" aria-label="Delima Realtors on Twitter" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
                             <i class="fab fa-twitter"></i>
                         </a>
-                        <a href="#/" aria-label="LinkedIn" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
+                        <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" aria-label="Delima Realtors on LinkedIn" style="width: 40px; height: 40px; background: rgba(212, 175, 55, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #d4af37; text-decoration: none; transition: all 0.3s ease; border: 1px solid rgba(212, 175, 55, 0.3);">
                             <i class="fab fa-linkedin-in"></i>
                         </a>
                     </div>

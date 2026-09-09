@@ -89,9 +89,9 @@
                     <div class="hero-social-media" style="text-align: right;">
                         <h3 style="color: white; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px;">Follow Us</h3>
                         <ul style="justify-content: flex-end;">
-                            <li><a href="#/" title="facebook" on:click|preventDefault style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fab fa-facebook-f"></i></a></li>
-                            <li><a href="#/" title="instagram" on:click|preventDefault style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fa-brands fa-instagram"></i></a></li>
-                            <li><a href="#" title="twitter" on:click|preventDefault style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fa-brands fa-twitter"></i></a></li>
+                            <li><a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" title="Facebook" style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fab fa-facebook-f"></i></a></li>
+                            <li><a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" title="Instagram" style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fa-brands fa-instagram"></i></a></li>
+                            <li><a href="https://twitter.com/" target="_blank" rel="noopener noreferrer" title="Twitter" style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fa-brands fa-twitter"></i></a></li>
                         </ul>
                     </div>
                     <!-- Hero Social Media End -->
@@ -108,8 +108,8 @@
                 <h3>Find Your Dream Property</h3>
                 <div class="search-filters">
                     <div class="filter-group">
-                        <label>Location</label>
-                        <select bind:value={searchLocation} on:change={filterProperties}>
+                        <label for="search-location">Location</label>
+                        <select id="search-location" bind:value={searchLocation} on:change={filterProperties}>
                             <option value="">All Locations</option>
                             <option value="Westlands">Westlands</option>
                             <option value="Kilimani">Kilimani</option>
@@ -122,8 +122,8 @@
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label>Property Type</label>
-                        <select bind:value={searchType} on:change={filterProperties}>
+                        <label for="search-type">Property Type</label>
+                        <select id="search-type" bind:value={searchType} on:change={filterProperties}>
                             <option value="">All Types</option>
                             <option value="Apartment">Apartment</option>
                             <option value="Villa">Villa</option>
@@ -133,8 +133,8 @@
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label>Bedrooms</label>
-                        <select bind:value={searchBeds} on:change={filterProperties}>
+                        <label for="search-beds">Bedrooms</label>
+                        <select id="search-beds" bind:value={searchBeds} on:change={filterProperties}>
                             <option value="">Any</option>
                             <option value="1">1+</option>
                             <option value="2">2+</option>
@@ -144,8 +144,8 @@
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label>Max Price (KES)</label>
-                        <select bind:value={searchMaxPrice} on:change={filterProperties}>
+                        <label for="search-price">Max Price (KES)</label>
+                        <select id="search-price" bind:value={searchMaxPrice} on:change={filterProperties}>
                             <option value="">No Limit</option>
                             <option value="10000000">10M</option>
                             <option value="20000000">20M</option>
@@ -1396,7 +1396,7 @@
                     <div class="post-item wow fadeInUp">
                         <!-- Post Featured Image Start-->
                         <div class="post-featured-image">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
+                            <a href="/about" data-cursor-text="Read">
                                 <figure class="image-anime">
                                     <img src="/lib/assets/post-1.jpg" alt="">
                                 </figure>    
@@ -1408,14 +1408,14 @@
                         <div class="post-item-body">
                             <!-- Post Item Content Start -->
                             <div class="post-item-content">
-                                <h2><a href="#" on:click|preventDefault>Sustainable living: eco-friendly home features</a></h2>
+                                <h2><a href="/about">Sustainable living: eco-friendly home features</a></h2>
                                 <p>We explore sustainable design elements, from solar panels to energy-efficient appliances....</p>
                             </div>
                             <!-- Post Item Content End -->
 
                             <!-- Post Item Button Start-->
                             <div class="post-item-btn">
-                                <a href="#" class="readmore-btn" on:click|preventDefault>read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
+                                <a href="/about" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
                             </div>
                             <!-- Post Item Button End-->
                         </div>
@@ -1429,7 +1429,7 @@
                     <div class="post-item wow fadeInUp" data-wow-delay="0.2s">
                         <!-- Post Featured Image Start-->
                         <div class="post-featured-image">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
+                            <a href="/about" data-cursor-text="Read">
                                 <figure class="image-anime">
                                     <img src="/lib/assets/post-2.jpg" alt="">
                                 </figure>    
@@ -1441,14 +1441,14 @@
                         <div class="post-item-body">
                             <!-- Post Item Content Start -->
                             <div class="post-item-content">
-                                <h2><a href="#" on:click|preventDefault>Small spaces: design tips for compact homes</a></h2>
+                                <h2><a href="/about">Small spaces: design tips for compact homes</a></h2>
                                 <p>In this article, We share design strategies to maximize space, optimize storage, and make    </p>
                             </div>
                             <!-- Post Item Content End -->
 
                             <!-- Post Item Button Start-->
                             <div class="post-item-btn">
-                                <a href="#" on:click|preventDefault>read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
+                                <a href="/about" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt="" aria-hidden="true"></a>
                             </div>
                             <!-- Post Item Button End-->
                         </div>
@@ -1474,14 +1474,14 @@
                         <div class="post-item-body">
                             <!-- Post Item Content Start -->
                             <div class="post-item-content">
-                                <h2><a href="#" on:click|preventDefault>Home buying process: a step-by-step guide</a></h2>
+                                <h2><a href="/about">Home buying process: a step-by-step guide</a></h2>
                                 <p>This post breaks down the home buying process into easy-to-follow steps...</p>
                             </div>
                             <!-- Post Item Content End -->
 
                             <!-- Post Item Button Start-->
                             <div class="post-item-btn">
-                                <a href="#" class="readmore-btn" on:click|preventDefault>read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
+                                <a href="/about" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
                             </div>
                             <!-- Post Item Button End-->
                         </div>
