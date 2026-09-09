@@ -2,6 +2,7 @@
         import { onMount } from 'svelte';
         import { favorites } from '$lib/stores/favorites';
         import { compare } from '$lib/stores/compare';
+        import ThemeToggle from './ThemeToggle.svelte';
 
         let favCount = 0;
         let compareCount = 0;
@@ -47,8 +48,9 @@
                                                         <li class="nav-item"><a class="nav-link" href="/services">Services</a></li>
                                                         <li class="nav-item"><a class="nav-link" href="/projects">Properties</a></li>
                                                                         <li class="nav-item"><a class="nav-link" href="/neighborhoods">Areas</a></li>
-									<li class="nav-item"><a class="nav-link" href="/agents">Agents</a></li>
-									<li class="nav-item"><a class="nav-link" href="/contact">Contact</a></li>
+                                                                        <li class="nav-item"><a class="nav-link" href="/agents">Agents</a></li>
+                                                                        <li class="nav-item"><a class="nav-link" href="/blog">Blog</a></li>
+                                                                        <li class="nav-item"><a class="nav-link" href="/contact">Contact</a></li>
                                                 </ul>
                                         </div>
 
@@ -71,6 +73,7 @@
                                                                 <span class="action-badge">{compareCount}</span>
                                                         {/if}
                                                 </a>
+										<ThemeToggle />
                                                 <!-- Header Contact Box Start -->
                                                 <div class="header-contact-box">
                                                         <div class="icon-box">
