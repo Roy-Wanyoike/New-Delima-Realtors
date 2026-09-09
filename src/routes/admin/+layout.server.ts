@@ -15,51 +15,61 @@ import { createClient } from '@supabase/supabase-js';
  * (supabase/rls.sql) is the data-layer boundary that blocks non-admin
  * reads/writes regardless.
  */
-export const load = async ({ cookies }: { cookies: import('@sveltejs/kit').Cookies }) => {
-	const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-	const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+export const load = async ({ cookies, url, route }: {
+        cookies: import('@sveltejs/kit').Cookies;
+        url: URL;
+        route: { id: string | null };
+}) => {
+        // The login page must be reachable WITHOUT a session, otherwise the guard
+        // would redirect /admin/login -> /admin/login indefinitely.
+        if (route.id === '/admin/login') {
+                return { isAdmin: false };
+        }
 
-	if (!supabaseUrl || !supabaseAnonKey) {
-		throw redirect(303, '/admin/login?error=server_unavailable');
-	}
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-	const accessToken = cookies.get('sb-access-token');
+        if (!supabaseUrl || !supabaseAnonKey) {
+                throw redirect(303, '/admin/login?error=server_unavailable');
+        }
 
-	if (!accessToken) {
-		throw redirect(303, '/admin/login');
-	}
+        const accessToken = cookies.get('sb-access-token');
 
-	// Client used to validate the token (no Authorization header needed;
-	// getUser accepts the token as an argument).
-	const validationClient = createClient(supabaseUrl, supabaseAnonKey, {
-		auth: { persistSession: false, autoRefreshToken: false }
-	});
+        if (!accessToken) {
+                throw redirect(303, `/admin/login?redirect=${encodeURIComponent(url.pathname)}`);
+        }
 
-	const {
-		data: { user },
-		error
-	} = await validationClient.auth.getUser(accessToken);
+        // Client used to validate the token (no Authorization header needed;
+        // getUser accepts the token as an argument).
+        const validationClient = createClient(supabaseUrl, supabaseAnonKey, {
+                auth: { persistSession: false, autoRefreshToken: false }
+        });
 
-	if (error || !user) {
-		cookies.delete('sb-access-token', { path: '/' });
-		throw redirect(303, '/admin/login?error=session_expired');
-	}
+        const {
+                data: { user },
+                error
+        } = await validationClient.auth.getUser(accessToken);
 
-	// Authenticated client (carries the user's JWT on every request) so that
-	// the security-definer is_admin() RPC sees auth.uid() = user.id.
-	const authedClient = createClient(supabaseUrl, supabaseAnonKey, {
-		auth: { persistSession: false, autoRefreshToken: false },
-		global: { headers: { Authorization: `Bearer ${accessToken}` } }
-	});
+        if (error || !user) {
+                cookies.delete('sb-access-token', { path: '/' });
+                throw redirect(303, '/admin/login?error=session_expired');
+        }
 
-	const { data: isAdmin, error: rpcError } = await authedClient.rpc('is_admin');
+        // Authenticated client (carries the user's JWT on every request) so that
+        // the security-definer is_admin() RPC sees auth.uid() = user.id.
+        const authedClient = createClient(supabaseUrl, supabaseAnonKey, {
+                auth: { persistSession: false, autoRefreshToken: false },
+                global: { headers: { Authorization: `Bearer ${accessToken}` } }
+        });
 
-	if (rpcError || !isAdmin) {
-		throw redirect(303, '/admin/login?error=not_admin');
-	}
+        const { data: isAdmin, error: rpcError } = await authedClient.rpc('is_admin');
 
-	return {
-		isAdmin: true,
-		adminEmail: user.email ?? ''
-	};
+        if (rpcError || !isAdmin) {
+                throw redirect(303, '/admin/login?error=not_admin');
+        }
+
+        return {
+                isAdmin: true,
+                adminEmail: user.email ?? ''
+        };
 };

@@ -654,22 +654,6 @@
                 font-size: 28px;
         }
 
-        .logout-btn {
-                background: #d4af37;
-                color: #1f1810;
-                padding: 10px 20px;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-weight: 600;
-                transition: all 0.3s;
-        }
-
-        .logout-btn:hover {
-                background: #efbe5c;
-                transform: translateY(-2px);
-        }
-
         .dashboard-main {
                 padding: 30px 20px;
         }
