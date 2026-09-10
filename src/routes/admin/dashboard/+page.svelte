@@ -1,11 +1,11 @@
 <script lang="ts">
         import { goto } from '$app/navigation';
         import { onMount } from 'svelte';
-        import { page } from '$app/stores';
+        import { adminAuth, logoutAdmin } from '$lib/stores/adminAuth';
+        import type { Project } from '$lib/types';
 
-        // Server-validated by /admin/+layout.server.ts.
-        $: isLoggedIn = $page.data?.isAdmin ?? false;
-        let projects: any[] = [];
+        let isLoggedIn = false;
+        let projects: Project[] = [];
         let loading = false;
         let showForm = false;
         let editingId: string | null = null;
@@ -36,10 +36,13 @@
         let sortBy = 'recent';
 
         onMount(() => {
-                if (!isLoggedIn) {
-                        goto('/admin/login');
-                        return;
-                }
+                adminAuth.subscribe((auth) => {
+                        isLoggedIn = auth.isLoggedIn;
+                        if (!isLoggedIn) {
+                                goto('/admin/login');
+                        }
+                });
+
                 loadProjects();
         });
 
@@ -59,17 +62,17 @@
                         if (err) throw err;
                         
                         // Filter and sort
-                        let filtered = data || [];
+                        let filtered: Project[] = (data as Project[]) || [];
                         if (filterLocation) {
-                                filtered = filtered.filter(p => 
+                                filtered = filtered.filter((p: Project) =>
                                         p.location.toLowerCase().includes(filterLocation.toLowerCase())
                                 );
                         }
-                        
+
                         if (sortBy === 'recent') {
-                                filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                                filtered.sort((a: Project, b: Project) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
                         } else if (sortBy === 'featured') {
-                                filtered.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+                                filtered.sort((a: Project, b: Project) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
                         }
                         
                         projects = filtered;
@@ -79,10 +82,22 @@
                 }
         }
 
-        function openEditForm(project: any) {
+        function openEditForm(project: Project) {
                 editingId = project.id;
-                formData = { ...project };
-                imagePreview = project.imageUrl;
+                formData = {
+                        title: project.title,
+                        description: project.description,
+                        location: project.location,
+                        price: project.price,
+                        bedrooms: project.bedrooms ?? '',
+                        bathrooms: project.bathrooms ?? '',
+                        imageUrl: project.imageUrl ?? '',
+                        category: project.category ?? 'Residential',
+                        status: project.status ?? 'published',
+                        featured: project.featured ?? false,
+                        amenities: project.amenities ?? ''
+                };
+                imagePreview = project.imageUrl ?? '';
                 showForm = true;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -213,7 +228,7 @@
                 }
         }
 
-        async function toggleFeatured(project: any) {
+        async function toggleFeatured(project: Project) {
                 try {
                         const { supabase } = await import('$lib/supabase');
                         if (!supabase) {
@@ -357,6 +372,11 @@
                         loading = false;
                 }
         }
+
+        function handleLogout() {
+                logoutAdmin();
+                goto('/admin/login');
+        }
 </script>
 
 {#if isLoggedIn}
@@ -364,6 +384,7 @@
                 <header class="admin-header">
                         <div class="header-content">
                                 <h1>📊 Project Management</h1>
+                                <button on:click={handleLogout} class="logout-btn">Logout</button>
                         </div>
                 </header>
 
@@ -639,6 +660,22 @@
         .header-content h1 {
                 margin: 0;
                 font-size: 28px;
+        }
+
+        .logout-btn {
+                background: #d4af37;
+                color: #1f1810;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: 600;
+                transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+                background: #efbe5c;
+                transform: translateY(-2px);
         }
 
         .dashboard-main {
