@@ -9,6 +9,7 @@
         let filteredProjects: any[] = [];
         let loading = true;
         let error = '';
+        let usingDemoData = false;
 
         // Read ?location= from the URL to pre-filter (set by /neighborhoods cards).
         let locationFilter = $page.url.searchParams.get('location') ?? '';
@@ -212,6 +213,7 @@
                         if (!supabase) {
                                 console.log('Supabase not available, using demo data');
                                 projects = demoProjects;
+                                usingDemoData = true;
 
                                 // Extract categories from demo data
                                 const cats = new Set<string>();
@@ -235,7 +237,13 @@
                         if (err) throw err;
 
                         // Use demo data if no projects in database
-                        projects = (data && data.length > 0) ? data : demoProjects;
+                        if (data && data.length > 0) {
+                                        projects = data;
+                                        usingDemoData = false;
+                                } else {
+                                        projects = demoProjects;
+                                        usingDemoData = true;
+                                }
 
                         // Extract unique categories and locations
                         const cats = new Set<string>();
@@ -523,6 +531,12 @@
                                                 </p>
                                         </div>
 
+                                                        {#if usingDemoData}
+                                                                <div class="demo-banner" role="status">
+                                                                        <span>📋 These are sample listings for demonstration. Real properties will appear once the database is configured.</span>
+                                                                </div>
+                                                        {/if}
+
                                 {#if locationFilter}
 
                                         <div class="location-banner" role="status">
@@ -779,6 +793,19 @@
                 color: #666;
                 font-size: 14px;
                 margin: 0;
+        }
+
+        .demo-banner {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: #e7f4ff;
+                border: 1px solid #b8daff;
+                border-radius: 8px;
+                padding: 10px 16px;
+                margin-bottom: 20px;
+                font-size: 0.85rem;
+                color: #004085;
         }
 
         .location-banner {
