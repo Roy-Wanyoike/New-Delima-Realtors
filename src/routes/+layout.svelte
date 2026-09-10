@@ -3,6 +3,8 @@
 	import Footer from '$lib/components/footer.svelte';
 	import Chatbot from '$lib/components/Chatbot.svelte';
 	import CompareBar from '$lib/components/CompareBar.svelte';
+	import ScrollToTop from '$lib/components/ScrollToTop.svelte';
+	import Toaster from '$lib/components/Toaster.svelte';
 </script>
 
 <div class="app-shell">
@@ -13,6 +15,8 @@
 	<Footer />
 	<Chatbot />
 	<CompareBar />
+	<ScrollToTop />
+	<Toaster />
 </div>
 
 <style>

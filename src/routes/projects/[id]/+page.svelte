@@ -2,10 +2,18 @@
         import { page } from '$app/stores';
         import { onMount } from 'svelte';
         import MortgageCalculator from '$lib/components/MortgageCalculator.svelte';
+        import { favorites } from '$lib/stores/favorites';
+        import { compare } from '$lib/stores/compare';
 
         let project: any = null;
         let loading = true;
         let error = '';
+
+        // Gallery state
+        let galleryImages: string[] = [];
+        let activeImage = '';
+        let lightboxOpen = false;
+        let lightboxIndex = 0;
 
         // Contact form
         let contactForm = {
@@ -27,8 +35,36 @@
 
                 try {
                         const { supabase } = await import('$lib/supabase');
+
+                        // Demo-data fallback for offline mode / when Supabase is unavailable.
+                        // Matches the IDs used by /projects (koch-1 .. koch-12).
+                        const demoProjects: any[] = [
+                                { id: 'koch-1', title: '2, 3 & 4 Bedroom Apartments', description: 'Modern apartments in the heart of Westlands with excellent finishes, spacious balconies, and proximity to shopping centers.', location: 'Westlands, Nairobi', price: '17700000', bedrooms: '3', bathrooms: '2', imageUrl: '/lib/assets/project-1.jpg', category: 'Apartment', status: 'published', featured: true, amenities: 'Parking, Lift, Generator, Borehole, Gym, CCTV' },
+                                { id: 'koch-2', title: '2, 3, 4 & 5 Bedroom Apartments', description: 'Spacious family apartments on Riara Road with DSQs, modern kitchen fittings, and secure gated community.', location: 'Riara Road, Nairobi', price: '10700000', bedrooms: '3', bathrooms: '2', imageUrl: '/lib/assets/apartments-2.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Garden, Security, Play Area' },
+                                { id: 'koch-3', title: '3, 4 & 5 Bedroom Apartments with DSQs', description: 'Luxury apartments in Kilimani featuring servant quarters, high-end finishes, and rooftop terrace with city views.', location: 'Kilimani, Nairobi', price: '29400000', bedrooms: '4', bathrooms: '3', imageUrl: '/lib/assets/apartments-3.jpg', category: 'Apartment', status: 'published', featured: true, amenities: 'DSQ, Swimming Pool, Gym, Parking, Solar' },
+                                { id: 'koch-4', title: '1, 2 & 3 Bedroom Apartment', description: 'Affordable apartments in Kilimani suitable for young professionals and small families. Close to schools and hospitals.', location: 'Kilimani, Nairobi', price: '5900000', bedrooms: '2', bathrooms: '1', imageUrl: '/lib/assets/apartments-1.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'Parking, Security, Water Storage' },
+                                { id: 'koch-5', title: '1 Bedroom Apartment', description: 'Stylish 1-bedroom apartment in Westlands perfect for singles. Modern finishes with balcony and city views.', location: 'Westlands, Nairobi', price: '21900000', bedrooms: '1', bathrooms: '1', imageUrl: '/lib/assets/apartments-4.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'Gym, Parking, Rooftop Terrace, Security' },
+                                { id: 'koch-6', title: '5 Bedroom Villa', description: 'Magnificent 5-bedroom villa in Loresho sitting on half-acre land. Features swimming pool, mature garden, and guest house.', location: 'Loresho, Nairobi', price: '150000000', bedrooms: '5', bathrooms: '6', imageUrl: '/lib/assets/project-2.jpg', category: 'Villa', status: 'published', featured: true, amenities: 'Swimming Pool, Garden, Guest House, Parking, Security' },
+                                { id: 'koch-7', title: '4 Bedroom Villa', description: 'Elegant 4-bedroom villa in Kitisuru with panoramic views. Open-plan living, modern kitchen, and expansive garden.', location: 'Kitisuru, Nairobi', price: '85000000', bedrooms: '4', bathrooms: '5', imageUrl: '/lib/assets/project-3.jpg', category: 'Villa', status: 'published', featured: true, amenities: 'Garden, Parking, Staff Quarters, Security, View' },
+                                { id: 'koch-8', title: '4 Bedroom Townhouses', description: 'Modern townhouses in Langata with shared swimming pool and playground. Perfect for families.', location: 'Langata, Nairobi', price: '35900000', bedrooms: '4', bathrooms: '4', imageUrl: '/lib/assets/amenities-1.jpg', category: 'Townhouse', status: 'published', featured: false, amenities: 'Swimming Pool, Garden, Parking, Playground' },
+                                { id: 'koch-9', title: '3 Bedroom Apartment With DSQ', description: 'Executive 3-bedroom apartment in Westlands with servant quarters. Close to Sarit Centre and international schools.', location: 'Westlands, Nairobi', price: '22100000', bedrooms: '3', bathrooms: '3', imageUrl: '/lib/assets/amenities-2.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Lift, Generator, Security' },
+                                { id: 'koch-10', title: '4 Bedroom Apartment with DSQ', description: 'Spacious 4-bedroom apartment in Kileleshwa with DSQ, master ensuite, and modern finishes throughout.', location: 'Kileleshwa, Nairobi', price: '22000000', bedrooms: '4', bathrooms: '4', imageUrl: '/lib/assets/amenities-3.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Gym, Lift, Security' },
+                                { id: 'koch-11', title: '5 Bedroom Apartment With DSQ', description: 'Luxurious 5-bedroom penthouse in Kileleshwa with panoramic views, private lift, and rooftop terrace.', location: 'Kileleshwa, Nairobi', price: '41000000', bedrooms: '5', bathrooms: '6', imageUrl: '/lib/assets/amenities-4.jpg', category: 'Penthouse', status: 'published', featured: true, amenities: 'DSQ, Private Lift, Rooftop Terrace, Parking, Gym' },
+                                { id: 'koch-12', title: 'Studio And 1 Bedroom Apartment', description: 'Compact studio and 1-bedroom units in Kilimani ideal for students and young professionals.', location: 'Kilimani, Nairobi', price: '6400000', bedrooms: '1', bathrooms: '1', imageUrl: '/lib/assets/amenities-5.jpg', category: 'Studio', status: 'published', featured: false, amenities: 'Parking, Security, Internet Ready' }
+                        ];
+
                         if (!supabase) {
-                                error = 'Property listings are currently unavailable. Please try again later.';
+                                // Offline mode: fall back to demo data so the page is still usable.
+                                const demo = demoProjects.find((p) => p.id === projectId);
+                                if (demo && demo.status === 'published') {
+                                        project = demo;
+                                        const complement = ['/lib/assets/project-1.jpg', '/lib/assets/project-2.jpg', '/lib/assets/project-3.jpg', '/lib/assets/apartments-1.jpg', '/lib/assets/apartments-2.jpg', '/lib/assets/apartments-3.jpg', '/lib/assets/apartments-4.jpg', '/lib/assets/amenities-1.jpg', '/lib/assets/amenities-2.jpg', '/lib/assets/amenities-3.jpg', '/lib/assets/amenities-4.jpg', '/lib/assets/amenities-5.jpg'];
+                                        galleryImages = [project.imageUrl, ...complement.filter((c) => c !== project.imageUrl)].slice(0, 6);
+                                        activeImage = galleryImages[0] ?? '';
+                                        favorites.hydrate();
+                                } else {
+                                        error = 'Project not found or not published';
+                                }
                                 loading = false;
                                 return;
                         }
@@ -44,6 +80,25 @@
                                 error = 'Project not found or not published';
                         } else {
                                 project = data;
+                                // Build gallery: primary image + a few complementary stock images
+                                // (in production these would come from a project_images table).
+                                const complement = [
+                                        '/lib/assets/project-1.jpg',
+                                        '/lib/assets/project-2.jpg',
+                                        '/lib/assets/project-3.jpg',
+                                        '/lib/assets/apartments-1.jpg',
+                                        '/lib/assets/apartments-2.jpg',
+                                        '/lib/assets/apartments-3.jpg',
+                                        '/lib/assets/apartments-4.jpg',
+                                        '/lib/assets/amenities-1.jpg',
+                                        '/lib/assets/amenities-2.jpg',
+                                        '/lib/assets/amenities-3.jpg',
+                                        '/lib/assets/amenities-4.jpg',
+                                        '/lib/assets/amenities-5.jpg'
+                                ];
+                                galleryImages = [project.imageUrl, ...complement.filter((c) => c !== project.imageUrl)].slice(0, 6);
+                                activeImage = galleryImages[0] ?? '';
+                                favorites.hydrate();
                         }
                 } catch (err) {
                         console.error('Error loading project:', err);
@@ -52,6 +107,33 @@
                         loading = false;
                 }
         });
+
+        function openLightbox(idx: number) {
+                lightboxIndex = idx;
+                activeImage = galleryImages[idx];
+                lightboxOpen = true;
+        }
+
+        function closeLightbox() {
+                lightboxOpen = false;
+        }
+
+        function nextImage() {
+                lightboxIndex = (lightboxIndex + 1) % galleryImages.length;
+                activeImage = galleryImages[lightboxIndex];
+        }
+
+        function prevImage() {
+                lightboxIndex = (lightboxIndex - 1 + galleryImages.length) % galleryImages.length;
+                activeImage = galleryImages[lightboxIndex];
+        }
+
+        function handleLightboxKey(e: KeyboardEvent) {
+                if (!lightboxOpen) return;
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowRight') nextImage();
+                if (e.key === 'ArrowLeft') prevImage();
+        }
 
         async function submitContactForm() {
                 if (!contactForm.name || !contactForm.email || !contactForm.message) {
@@ -98,6 +180,8 @@
         }
 </script>
 
+<svelte:window on:keydown={handleLightboxKey} />
+
 {#if loading}
         <main class="loading-container">
                 <div class="loading">Loading property details...</div>
@@ -111,12 +195,62 @@
         </main>
 {:else if project}
         <main class="project-detail">
-                <!-- Hero Section -->
-                <div class="hero-section">
-                        <img src={project.imageUrl} alt={project.title} class="hero-image" />
-                        {#if project.featured}
-                                <div class="featured-badge">⭐ Featured Property</div>
+                <!-- Gallery Section -->
+                <div class="gallery-section">
+                        <div class="gallery-main" on:click={() => openLightbox(galleryImages.indexOf(activeImage))} role="button" tabindex="0" aria-label="Open image in lightbox" on:keypress={(e) => e.key === 'Enter' && openLightbox(galleryImages.indexOf(activeImage))}>
+                                <img src={activeImage} alt={project.title} class="main-image" />
+                                {#if project.featured}
+                                        <div class="featured-badge">⭐ Featured Property</div>
+                                {/if}
+                                <div class="zoom-hint" aria-hidden="true">🔍 Click to zoom</div>
+                                {#if galleryImages.length > 1}
+                                        <button type="button" class="gallery-nav prev" aria-label="Previous image" on:click|stopPropagation={prevImage}>‹</button>
+                                        <button type="button" class="gallery-nav next" aria-label="Next image" on:click|stopPropagation={nextImage}>›</button>
+                                {/if}
+                        </div>
+
+                        {#if galleryImages.length > 1}
+                                <div class="gallery-thumbs">
+                                        {#each galleryImages as img, i (img)}
+                                                <button
+                                                        type="button"
+                                                        class="gallery-thumb"
+                                                        class:active={img === activeImage}
+                                                        on:click={() => { activeImage = img; lightboxIndex = i; }}
+                                                        aria-label="View image {i + 1}"
+                                                        aria-pressed={img === activeImage}
+                                                >
+                                                        <img src={img} alt="" />
+                                                </button>
+                                        {/each}
+                                </div>
                         {/if}
+                </div>
+
+                <!-- Favorite + Compare actions -->
+                <div class="container">
+                        <div class="detail-actions">
+                                <button
+                                        type="button"
+                                        class="action-btn fav"
+                                        class:active={$favorites.includes(project.id)}
+                                        on:click={() => favorites.toggle(project.id)}
+                                        aria-pressed={$favorites.includes(project.id)}
+                                >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill={$favorites.includes(project.id) ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                                        {$favorites.includes(project.id) ? 'Saved' : 'Save'}
+                                </button>
+                                <button
+                                        type="button"
+                                        class="action-btn cmp"
+                                        class:active={$compare.some((p) => p.id === project.id)}
+                                        on:click={() => compare.toggle(project)}
+                                        aria-pressed={$compare.some((p) => p.id === project.id)}
+                                >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="18" rx="1" /><rect x="14" y="3" width="7" height="18" rx="1" /></svg>
+                                        {$compare.some((p) => p.id === project.id) ? 'In compare' : 'Compare'}
+                                </button>
+                        </div>
                 </div>
 
                 <div class="container">
@@ -196,14 +330,14 @@
                                         </section>
                                 </article>
 
-			<!-- Mortgage Calculator -->
-			{#if project?.price}
-				<section class="mortgage-section" style="margin: 40px 0;">
-					<MortgageCalculator price={parseInt(project.price)} />
-				</section>
-			{/if}
+                        <!-- Mortgage Calculator -->
+                        {#if project?.price}
+                                <section class="mortgage-section" style="margin: 40px 0;">
+                                        <MortgageCalculator price={parseInt(project.price)} />
+                                </section>
+                        {/if}
 
-			<!-- Right Column - Sidebar --> - Sidebar -->
+                        <!-- Right Column - Sidebar --> - Sidebar -->
                                 <aside class="detail-sidebar">
                                         <div class="contact-card">
                                                 <h3>Interested in this property?</h3>
@@ -281,7 +415,203 @@
                                 <p class="coming-soon">More properties coming soon...</p>
                         </section>
                 </div>
-        </main>
+        
+{#if lightboxOpen}
+        <!-- svelte-ignore a11y-click-events-have-key-events, a11y-no-noninteractive-element-interactions -->
+        <div class="lightbox" on:click={closeLightbox} role="dialog" aria-modal="true" aria-label="Image gallery" tabindex="-1">
+                <button type="button" class="lightbox-close" on:click|stopPropagation={closeLightbox} aria-label="Close gallery">✕</button>
+                <button type="button" class="lightbox-nav prev" on:click|stopPropagation={prevImage} aria-label="Previous image">‹</button>
+                <img src={activeImage} alt={project.title} />
+                <button type="button" class="lightbox-nav next" on:click|stopPropagation={nextImage} aria-label="Next image">›</button>
+                <div class="lightbox-counter">{lightboxIndex + 1} / {galleryImages.length}</div>
+        </div>
+{/if}
+
+<style>
+        .gallery-section { margin: 0 auto 24px; max-width: 1200px; padding: 0 20px; }
+
+        .gallery-main {
+                position: relative;
+                border-radius: 14px;
+                overflow: hidden;
+                cursor: zoom-in;
+                box-shadow: 0 8px 28px rgba(31, 24, 16, 0.15);
+                background: #1f1810;
+        }
+
+        .gallery-main .main-image {
+                width: 100%;
+                height: 480px;
+                object-fit: cover;
+                display: block;
+                transition: transform 0.4s ease;
+        }
+
+        .gallery-main:hover .main-image { transform: scale(1.02); }
+        .gallery-main:focus-visible { outline: 3px solid #d4af37; outline-offset: 3px; }
+
+        .gallery-main .featured-badge {
+                position: absolute;
+                top: 16px;
+                left: 16px;
+                background: rgba(212, 175, 55, 0.95);
+                color: #1f1810;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                z-index: 2;
+        }
+
+        .zoom-hint {
+                position: absolute;
+                bottom: 16px;
+                right: 16px;
+                background: rgba(0,0,0,0.6);
+                color: #fff;
+                padding: 6px 12px;
+                border-radius: 16px;
+                font-size: 0.75rem;
+                opacity: 0;
+                transition: opacity 0.3s;
+        }
+
+        .gallery-main:hover .zoom-hint { opacity: 1; }
+
+        .gallery-nav {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                border: none;
+                background: rgba(0,0,0,0.5);
+                color: #fff;
+                font-size: 24px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+                z-index: 3;
+        }
+
+        .gallery-nav:hover { background: rgba(0,0,0,0.8); }
+        .gallery-nav.prev { left: 16px; }
+        .gallery-nav.next { right: 16px; }
+
+        .gallery-thumbs {
+                display: flex;
+                gap: 10px;
+                margin-top: 12px;
+                overflow-x: auto;
+                padding-bottom: 4px;
+        }
+
+        .gallery-thumb {
+                flex-shrink: 0;
+                width: 90px;
+                height: 70px;
+                border-radius: 8px;
+                overflow: hidden;
+                border: 3px solid transparent;
+                cursor: pointer;
+                padding: 0;
+                background: none;
+                transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .gallery-thumb:hover { transform: translateY(-2px); }
+        .gallery-thumb.active { border-color: #d4af37; }
+        .gallery-thumb:focus-visible { outline: 2px solid #d4af37; outline-offset: 2px; }
+
+        .detail-actions {
+                display: flex;
+                gap: 12px;
+                margin: 20px 0;
+        }
+
+        .action-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 20px;
+                border-radius: 24px;
+                border: 2px solid #eee;
+                background: #fff;
+                color: #1f1810;
+                cursor: pointer;
+                font-size: 0.9rem;
+                font-weight: 600;
+                transition: all 0.2s;
+        }
+
+        .action-btn:hover { border-color: #d4af37; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(212,175,55,0.2); }
+        .action-btn.fav.active { background: #dc3545; color: #fff; border-color: #dc3545; }
+        .action-btn.cmp.active { background: linear-gradient(135deg, #d4af37, #b8941f); color: #1f1810; border-color: #d4af37; }
+
+        .lightbox {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.92);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: lb-fade 0.25s ease;
+        }
+
+        @keyframes lb-fade { from { opacity: 0; } to { opacity: 1; } }
+
+        .lightbox img {
+                max-width: 90vw;
+                max-height: 80vh;
+                border-radius: 8px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .lightbox-close, .lightbox-nav {
+                position: absolute;
+                border: none;
+                background: rgba(255,255,255,0.15);
+                color: #fff;
+                cursor: pointer;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+        }
+
+        .lightbox-close { top: 24px; right: 24px; width: 44px; height: 44px; font-size: 18px; }
+        .lightbox-nav { top: 50%; transform: translateY(-50%); width: 52px; height: 52px; font-size: 32px; }
+        .lightbox-nav.prev { left: 24px; }
+        .lightbox-nav.next { right: 24px; }
+        .lightbox-close:hover, .lightbox-nav:hover { background: rgba(255,255,255,0.3); }
+
+        .lightbox-counter {
+                position: absolute;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%);
+                color: #fff;
+                font-size: 0.9rem;
+                background: rgba(0,0,0,0.4);
+                padding: 6px 16px;
+                border-radius: 16px;
+        }
+
+        @media (max-width: 600px) {
+                .gallery-main .main-image { height: 280px; }
+                .gallery-thumb { width: 64px; height: 50px; }
+                .detail-actions { flex-wrap: wrap; }
+                .action-btn { flex: 1; justify-content: center; }
+        }
+</style>
+
+</main>
 {/if}
 
 <style>
@@ -314,19 +644,6 @@
         .project-detail {
                 background: #f9f9f9;
                 padding-top: 0;
-        }
-
-        .hero-section {
-                position: relative;
-                height: 500px;
-                overflow: hidden;
-                background: #333;
-        }
-
-        .hero-image {
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
         }
 
         .featured-badge {
@@ -620,10 +937,6 @@
                 .detail-grid {
                         grid-template-columns: 1fr;
                         gap: 20px;
-                }
-
-                .hero-section {
-                        height: 300px;
                 }
 
                 .detail-content h1 {
