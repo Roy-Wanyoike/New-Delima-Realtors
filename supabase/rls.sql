@@ -101,3 +101,21 @@ create policy "admins: admin manage"
 --   with check (bucket_id = 'project-images' and public.is_admin());
 --
 -- Apply these in the Supabase Dashboard under Storage → Policies.
+
+-- ---------------------------------------------------------------------------
+-- instagram_posts
+--   * anon / public:  SELECT only (display the feed).
+--   * admin:          INSERT / UPDATE / DELETE (manage the feed).
+-- ---------------------------------------------------------------------------
+alter table public.instagram_posts enable row level security;
+
+drop policy if exists "instagram: public read" on public.instagram_posts;
+create policy "instagram: public read"
+    on public.instagram_posts for select to anon, authenticated
+    using (true);
+
+drop policy if exists "instagram: admin write" on public.instagram_posts;
+create policy "instagram: admin write"
+    on public.instagram_posts for all to authenticated
+    using (public.is_admin())
+    with check (public.is_admin());
