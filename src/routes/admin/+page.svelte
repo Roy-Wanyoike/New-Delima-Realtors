@@ -66,6 +66,12 @@
                                         <p>View and manage customer contact inquiries</p>
                                 </a>
 
+						<a href="/admin/instagram" class="menu-card">
+							<div class="card-icon">📸</div>
+							<h3>Instagram Feed</h3>
+							<p>Manage social feed posts (manual + Graph API sync)</p>
+						</a>
+
                                 <div class="menu-card disabled">
                                         <div class="card-icon">👥</div>
                                         <h3>User Management</h3>

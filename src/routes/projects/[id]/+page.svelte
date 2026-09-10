@@ -1,10 +1,23 @@
 <script lang="ts">
         import { page } from '$app/stores';
         import { onMount } from 'svelte';
+        import MortgageCalculator from '$lib/components/MortgageCalculator.svelte';
+        import ShareBar from '$lib/components/ShareBar.svelte';
+        import ViewingRequestModal from '$lib/components/ViewingRequestModal.svelte';
+        import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+        import { favorites } from '$lib/stores/favorites';
+        import { compare } from '$lib/stores/compare';
+        import { recentlyViewed } from '$lib/stores/recentlyViewed';
 
         let project: any = null;
         let loading = true;
         let error = '';
+
+        // Gallery state
+        let galleryImages: string[] = [];
+        let activeImage = '';
+        let lightboxOpen = false;
+        let lightboxIndex = 0;
 
         // Contact form
         let contactForm = {
@@ -15,6 +28,7 @@
         };
         let submitting = false;
         let submitted = false;
+        let viewingModalOpen = false;
 
         onMount(async () => {
                 const projectId = $page.params.id;
@@ -26,8 +40,37 @@
 
                 try {
                         const { supabase } = await import('$lib/supabase');
+
+                        // Demo-data fallback for offline mode / when Supabase is unavailable.
+                        // Matches the IDs used by /projects (koch-1 .. koch-12).
+                        const demoProjects: any[] = [
+                                { id: 'koch-1', title: '2, 3 & 4 Bedroom Apartments', description: 'Modern apartments in the heart of Westlands with excellent finishes, spacious balconies, and proximity to shopping centers.', location: 'Westlands, Nairobi', price: '17700000', bedrooms: '3', bathrooms: '2', imageUrl: '/lib/assets/project-1.jpg', category: 'Apartment', status: 'published', featured: true, amenities: 'Parking, Lift, Generator, Borehole, Gym, CCTV' },
+                                { id: 'koch-2', title: '2, 3, 4 & 5 Bedroom Apartments', description: 'Spacious family apartments on Riara Road with DSQs, modern kitchen fittings, and secure gated community.', location: 'Riara Road, Nairobi', price: '10700000', bedrooms: '3', bathrooms: '2', imageUrl: '/lib/assets/apartments-2.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Garden, Security, Play Area' },
+                                { id: 'koch-3', title: '3, 4 & 5 Bedroom Apartments with DSQs', description: 'Luxury apartments in Kilimani featuring servant quarters, high-end finishes, and rooftop terrace with city views.', location: 'Kilimani, Nairobi', price: '29400000', bedrooms: '4', bathrooms: '3', imageUrl: '/lib/assets/apartments-3.jpg', category: 'Apartment', status: 'published', featured: true, amenities: 'DSQ, Swimming Pool, Gym, Parking, Solar' },
+                                { id: 'koch-4', title: '1, 2 & 3 Bedroom Apartment', description: 'Affordable apartments in Kilimani suitable for young professionals and small families. Close to schools and hospitals.', location: 'Kilimani, Nairobi', price: '5900000', bedrooms: '2', bathrooms: '1', imageUrl: '/lib/assets/apartments-1.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'Parking, Security, Water Storage' },
+                                { id: 'koch-5', title: '1 Bedroom Apartment', description: 'Stylish 1-bedroom apartment in Westlands perfect for singles. Modern finishes with balcony and city views.', location: 'Westlands, Nairobi', price: '21900000', bedrooms: '1', bathrooms: '1', imageUrl: '/lib/assets/apartments-4.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'Gym, Parking, Rooftop Terrace, Security' },
+                                { id: 'koch-6', title: '5 Bedroom Villa', description: 'Magnificent 5-bedroom villa in Loresho sitting on half-acre land. Features swimming pool, mature garden, and guest house.', location: 'Loresho, Nairobi', price: '150000000', bedrooms: '5', bathrooms: '6', imageUrl: '/lib/assets/project-2.jpg', category: 'Villa', status: 'published', featured: true, amenities: 'Swimming Pool, Garden, Guest House, Parking, Security' },
+                                { id: 'koch-7', title: '4 Bedroom Villa', description: 'Elegant 4-bedroom villa in Kitisuru with panoramic views. Open-plan living, modern kitchen, and expansive garden.', location: 'Kitisuru, Nairobi', price: '85000000', bedrooms: '4', bathrooms: '5', imageUrl: '/lib/assets/project-3.jpg', category: 'Villa', status: 'published', featured: true, amenities: 'Garden, Parking, Staff Quarters, Security, View' },
+                                { id: 'koch-8', title: '4 Bedroom Townhouses', description: 'Modern townhouses in Langata with shared swimming pool and playground. Perfect for families.', location: 'Langata, Nairobi', price: '35900000', bedrooms: '4', bathrooms: '4', imageUrl: '/lib/assets/amenities-1.jpg', category: 'Townhouse', status: 'published', featured: false, amenities: 'Swimming Pool, Garden, Parking, Playground' },
+                                { id: 'koch-9', title: '3 Bedroom Apartment With DSQ', description: 'Executive 3-bedroom apartment in Westlands with servant quarters. Close to Sarit Centre and international schools.', location: 'Westlands, Nairobi', price: '22100000', bedrooms: '3', bathrooms: '3', imageUrl: '/lib/assets/amenities-2.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Lift, Generator, Security' },
+                                { id: 'koch-10', title: '4 Bedroom Apartment with DSQ', description: 'Spacious 4-bedroom apartment in Kileleshwa with DSQ, master ensuite, and modern finishes throughout.', location: 'Kileleshwa, Nairobi', price: '22000000', bedrooms: '4', bathrooms: '4', imageUrl: '/lib/assets/amenities-3.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Gym, Lift, Security' },
+                                { id: 'koch-11', title: '5 Bedroom Apartment With DSQ', description: 'Luxurious 5-bedroom penthouse in Kileleshwa with panoramic views, private lift, and rooftop terrace.', location: 'Kileleshwa, Nairobi', price: '41000000', bedrooms: '5', bathrooms: '6', imageUrl: '/lib/assets/amenities-4.jpg', category: 'Penthouse', status: 'published', featured: true, amenities: 'DSQ, Private Lift, Rooftop Terrace, Parking, Gym' },
+                                { id: 'koch-12', title: 'Studio And 1 Bedroom Apartment', description: 'Compact studio and 1-bedroom units in Kilimani ideal for students and young professionals.', location: 'Kilimani, Nairobi', price: '6400000', bedrooms: '1', bathrooms: '1', imageUrl: '/lib/assets/amenities-5.jpg', category: 'Studio', status: 'published', featured: false, amenities: 'Parking, Security, Internet Ready' }
+                        ];
+
                         if (!supabase) {
-                                error = 'Property listings are currently unavailable. Please try again later.';
+                                // Offline mode: fall back to demo data so the page is still usable.
+                                const demo = demoProjects.find((p) => p.id === projectId);
+                                if (demo && demo.status === 'published') {
+                                        project = demo;
+                                        const complement = ['/lib/assets/project-1.jpg', '/lib/assets/project-2.jpg', '/lib/assets/project-3.jpg', '/lib/assets/apartments-1.jpg', '/lib/assets/apartments-2.jpg', '/lib/assets/apartments-3.jpg', '/lib/assets/apartments-4.jpg', '/lib/assets/amenities-1.jpg', '/lib/assets/amenities-2.jpg', '/lib/assets/amenities-3.jpg', '/lib/assets/amenities-4.jpg', '/lib/assets/amenities-5.jpg'];
+                                        galleryImages = [project.imageUrl, ...complement.filter((c) => c !== project.imageUrl)].slice(0, 6);
+                                        activeImage = galleryImages[0] ?? '';
+                                        favorites.hydrate();
+                                        recentlyViewed.add(project);
+                                } else {
+                                        error = 'Project not found or not published';
+                                }
                                 loading = false;
                                 return;
                         }
@@ -43,6 +86,26 @@
                                 error = 'Project not found or not published';
                         } else {
                                 project = data;
+                                // Build gallery: primary image + a few complementary stock images
+                                // (in production these would come from a project_images table).
+                                const complement = [
+                                        '/lib/assets/project-1.jpg',
+                                        '/lib/assets/project-2.jpg',
+                                        '/lib/assets/project-3.jpg',
+                                        '/lib/assets/apartments-1.jpg',
+                                        '/lib/assets/apartments-2.jpg',
+                                        '/lib/assets/apartments-3.jpg',
+                                        '/lib/assets/apartments-4.jpg',
+                                        '/lib/assets/amenities-1.jpg',
+                                        '/lib/assets/amenities-2.jpg',
+                                        '/lib/assets/amenities-3.jpg',
+                                        '/lib/assets/amenities-4.jpg',
+                                        '/lib/assets/amenities-5.jpg'
+                                ];
+                                galleryImages = [project.imageUrl, ...complement.filter((c) => c !== project.imageUrl)].slice(0, 6);
+                                activeImage = galleryImages[0] ?? '';
+                                favorites.hydrate();
+                                                recentlyViewed.add(project);
                         }
                 } catch (err) {
                         console.error('Error loading project:', err);
@@ -51,6 +114,55 @@
                         loading = false;
                 }
         });
+
+        // Demo projects for the "Similar Properties" section (same category, excluding current).
+        const allDemoProjects: any[] = [
+                { id: 'koch-1', title: '2, 3 & 4 Bedroom Apartments', description: 'Modern apartments in the heart of Westlands.', location: 'Westlands, Nairobi', price: '17700000', bedrooms: '3', bathrooms: '2', imageUrl: '/lib/assets/project-1.jpg', category: 'Apartment', status: 'published', featured: true, amenities: 'Parking, Lift, Generator, Borehole, Gym, CCTV' },
+                { id: 'koch-2', title: '2, 3, 4 & 5 Bedroom Apartments', description: 'Spacious family apartments on Riara Road.', location: 'Riara Road, Nairobi', price: '10700000', bedrooms: '3', bathrooms: '2', imageUrl: '/lib/assets/apartments-2.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Garden, Security, Play Area' },
+                { id: 'koch-3', title: '3, 4 & 5 Bedroom Apartments with DSQs', description: 'Luxury apartments in Kilimani.', location: 'Kilimani, Nairobi', price: '29400000', bedrooms: '4', bathrooms: '3', imageUrl: '/lib/assets/apartments-3.jpg', category: 'Apartment', status: 'published', featured: true, amenities: 'DSQ, Swimming Pool, Gym, Parking, Solar' },
+                { id: 'koch-4', title: '1, 2 & 3 Bedroom Apartment', description: 'Affordable apartments in Kilimani.', location: 'Kilimani, Nairobi', price: '5900000', bedrooms: '2', bathrooms: '1', imageUrl: '/lib/assets/apartments-1.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'Parking, Security, Water Storage' },
+                { id: 'koch-5', title: '1 Bedroom Apartment', description: 'Stylish 1-bedroom apartment in Westlands.', location: 'Westlands, Nairobi', price: '21900000', bedrooms: '1', bathrooms: '1', imageUrl: '/lib/assets/apartments-4.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'Gym, Parking, Rooftop Terrace, Security' },
+                { id: 'koch-6', title: '5 Bedroom Villa', description: 'Magnificent villa in Loresho.', location: 'Loresho, Nairobi', price: '150000000', bedrooms: '5', bathrooms: '6', imageUrl: '/lib/assets/project-2.jpg', category: 'Villa', status: 'published', featured: true, amenities: 'Swimming Pool, Garden, Guest House, Parking, Security' },
+                { id: 'koch-7', title: '4 Bedroom Villa', description: 'Elegant villa in Kitisuru.', location: 'Kitisuru, Nairobi', price: '85000000', bedrooms: '4', bathrooms: '5', imageUrl: '/lib/assets/project-3.jpg', category: 'Villa', status: 'published', featured: true, amenities: 'Garden, Parking, Staff Quarters, Security, View' },
+                { id: 'koch-8', title: '4 Bedroom Townhouses', description: 'Modern townhouses in Langata.', location: 'Langata, Nairobi', price: '35900000', bedrooms: '4', bathrooms: '4', imageUrl: '/lib/assets/amenities-1.jpg', category: 'Townhouse', status: 'published', featured: false, amenities: 'Swimming Pool, Garden, Parking, Playground' },
+                { id: 'koch-9', title: '3 Bedroom Apartment With DSQ', description: 'Executive apartment in Westlands.', location: 'Westlands, Nairobi', price: '22100000', bedrooms: '3', bathrooms: '3', imageUrl: '/lib/assets/amenities-2.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Lift, Generator, Security' },
+                { id: 'koch-10', title: '4 Bedroom Apartment with DSQ', description: 'Spacious apartment in Kileleshwa.', location: 'Kileleshwa, Nairobi', price: '22000000', bedrooms: '4', bathrooms: '4', imageUrl: '/lib/assets/amenities-3.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Gym, Lift, Security' },
+                { id: 'koch-11', title: '5 Bedroom Apartment With DSQ', description: 'Luxurious penthouse in Kileleshwa.', location: 'Kileleshwa, Nairobi', price: '41000000', bedrooms: '5', bathrooms: '6', imageUrl: '/lib/assets/amenities-4.jpg', category: 'Penthouse', status: 'published', featured: true, amenities: 'DSQ, Private Lift, Rooftop Terrace, Parking, Gym' },
+                { id: 'koch-12', title: 'Studio And 1 Bedroom Apartment', description: 'Compact units in Kilimani.', location: 'Kilimani, Nairobi', price: '6400000', bedrooms: '1', bathrooms: '1', imageUrl: '/lib/assets/amenities-5.jpg', category: 'Studio', status: 'published', featured: false, amenities: 'Parking, Security, Internet Ready' }
+        ];
+
+        $: relatedProjects = project
+                ? allDemoProjects
+                                .filter((p) => p.id !== project.id && p.category === project.category)
+                                .slice(0, 3)
+                : [];
+
+        function openLightbox(idx: number) {
+                lightboxIndex = idx;
+                activeImage = galleryImages[idx];
+                lightboxOpen = true;
+        }
+
+        function closeLightbox() {
+                lightboxOpen = false;
+        }
+
+        function nextImage() {
+                lightboxIndex = (lightboxIndex + 1) % galleryImages.length;
+                activeImage = galleryImages[lightboxIndex];
+        }
+
+        function prevImage() {
+                lightboxIndex = (lightboxIndex - 1 + galleryImages.length) % galleryImages.length;
+                activeImage = galleryImages[lightboxIndex];
+        }
+
+        function handleLightboxKey(e: KeyboardEvent) {
+                if (!lightboxOpen) return;
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowRight') nextImage();
+                if (e.key === 'ArrowLeft') prevImage();
+        }
 
         async function submitContactForm() {
                 if (!contactForm.name || !contactForm.email || !contactForm.message) {
@@ -95,7 +207,29 @@
         function formatPrice(price: string) {
                 return parseInt(price).toLocaleString();
         }
+
+        function getAmenityIcon(amenity: string): string {
+                const a = amenity.toLowerCase();
+                if (a.includes('pool')) return '🏊';
+                if (a.includes('gym')) return '💪';
+                if (a.includes('garden')) return '🌿';
+                if (a.includes('parking') || a.includes('garage')) return '🚗';
+                if (a.includes('security') || a.includes('cctv')) return '🔒';
+                if (a.includes('lift') || a.includes('elevator')) return '🛗';
+                if (a.includes('generator') || a.includes('power') || a.includes('solar')) return '⚡';
+                if (a.includes('borehole') || a.includes('water')) return '💧';
+                if (a.includes('dsq') || a.includes('servant')) return '🏠';
+                if (a.includes('terrace') || a.includes('balcony')) return '🌅';
+                if (a.includes('guest')) return '🛏️';
+                if (a.includes('play') || a.includes('playground')) return '游乐';
+                if (a.includes('internet') || a.includes('wifi')) return '📶';
+                if (a.includes('view')) return '👁️';
+                if (a.includes('staff')) return '👨‍🔧';
+                return '✓';
+        }
 </script>
+
+<svelte:window on:keydown={handleLightboxKey} />
 
 {#if loading}
         <main class="loading-container">
@@ -110,21 +244,82 @@
         </main>
 {:else if project}
         <main class="project-detail">
-                <!-- Hero Section -->
-                <div class="hero-section">
-                        <img src={project.imageUrl} alt={project.title} class="hero-image" />
-                        {#if project.featured}
-                                <div class="featured-badge">⭐ Featured Property</div>
+                <!-- Gallery Section -->
+                <div class="gallery-section">
+                        <div class="gallery-main" on:click={() => openLightbox(galleryImages.indexOf(activeImage))} role="button" tabindex="0" aria-label="Open image in lightbox" on:keypress={(e) => e.key === 'Enter' && openLightbox(galleryImages.indexOf(activeImage))}>
+                                <img src={activeImage} alt={project.title} class="main-image" />
+                                {#if project.featured}
+                                        <div class="featured-badge">⭐ Featured Property</div>
+                                {/if}
+                                <div class="zoom-hint" aria-hidden="true">🔍 Click to zoom</div>
+                                {#if galleryImages.length > 1}
+                                        <button type="button" class="gallery-nav prev" aria-label="Previous image" on:click|stopPropagation={prevImage}>‹</button>
+                                        <button type="button" class="gallery-nav next" aria-label="Next image" on:click|stopPropagation={nextImage}>›</button>
+                                {/if}
+                        </div>
+
+                        {#if galleryImages.length > 1}
+                                <div class="gallery-thumbs">
+                                        {#each galleryImages as img, i (img)}
+                                                <button
+                                                        type="button"
+                                                        class="gallery-thumb"
+                                                        class:active={img === activeImage}
+                                                        on:click={() => { activeImage = img; lightboxIndex = i; }}
+                                                        aria-label="View image {i + 1}"
+                                                        aria-pressed={img === activeImage}
+                                                >
+                                                        <img src={img} alt="" />
+                                                </button>
+                                        {/each}
+                                </div>
                         {/if}
                 </div>
 
+                <!-- Favorite + Compare actions -->
                 <div class="container">
+                        <div class="detail-actions">
+                                <button
+                                        type="button"
+                                        class="action-btn fav"
+                                        class:active={$favorites.includes(project.id)}
+                                        on:click={() => favorites.toggle(project.id)}
+                                        aria-pressed={$favorites.includes(project.id)}
+                                >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill={$favorites.includes(project.id) ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                                        {$favorites.includes(project.id) ? 'Saved' : 'Save'}
+                                </button>
+                                <button
+                                        type="button"
+                                        class="action-btn cmp"
+                                        class:active={$compare.some((p) => p.id === project.id)}
+                                        on:click={() => compare.toggle(project)}
+                                        aria-pressed={$compare.some((p) => p.id === project.id)}
+                                >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="18" rx="1" /><rect x="14" y="3" width="7" height="18" rx="1" /></svg>
+                                        {$compare.some((p) => p.id === project.id) ? 'In compare' : 'Compare'}
+                                </button>
+                                                        <button type="button" class="action-btn print" on:click={() => window.print()} aria-label="Print property details">
+                                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+                                                                Print
+                                                        </button>
+                                                </div>
+
+<!-- Share bar -->
+                                        <div class="share-wrap" style="margin-top: 16px;">
+                                                <ShareBar url="/projects/{project.id}" title={project.title} />
+                                        </div>
+                        </div>
+
+                        <div class="container">
                         <div class="detail-grid">
                                 <!-- Left Column -->
                                 <article class="detail-content">
-                                        <div class="breadcrumb">
-                                                <a href="/">Home</a> / <a href="/projects">Properties</a> / <span>{project.title}</span>
-                                        </div>
+                                        <Breadcrumbs items={[
+                                                { label: 'Home', href: '/' },
+                                                { label: 'Properties', href: '/projects' },
+                                                { label: project.title }
+                                        ]} />
 
                                         <h1>{project.title}</h1>
                                         <div class="meta-info">
@@ -148,16 +343,19 @@
                                         </section>
 
                                         <!-- Amenities -->
-                                        {#if project.amenities}
-                                                <section class="section">
-                                                        <h3>Amenities & Features</h3>
-                                                        <ul class="amenities-list">
-                                                                {#each project.amenities.split(',') as amenity}
-                                                                        <li>✓ {amenity.trim()}</li>
-                                                                {/each}
-                                                        </ul>
-                                                </section>
-                                        {/if}
+                                                        {#if project.amenities}
+                                                                <section class="section">
+                                                                        <h3>Amenities & Features</h3>
+                                                                        <div class="amenities-grid">
+                                                                                {#each project.amenities.split(',') as amenity}
+                                                                                        <div class="amenity-chip">
+                                                                                                <span class="amenity-icon" aria-hidden="true">{getAmenityIcon(amenity.trim())}</span>
+                                                                                                <span>{amenity.trim()}</span>
+                                                                                        </div>
+                                                                                {/each}
+                                                                        </div>
+                                                                </section>
+                                                        {/if}
 
                                         <!-- Quick Facts -->
                                         <section class="section">
@@ -193,13 +391,39 @@
                                                         </div>
                                                 </div>
                                         </section>
-                                </article>
 
-                                <!-- Right Column - Sidebar -->
+                                                                <!-- Location Map -->
+                                                                <section class="section">
+                                                                        <h3>Location</h3>
+                                                                        <div class="map-embed">
+                                                                                <iframe
+                                                                                        title="Property location map"
+                                                                                        src="https://www.google.com/maps?q={encodeURIComponent(project.location)}&output=embed"
+                                                                                        loading="lazy"
+                                                                                        referrerpolicy="no-referrer-when-downgrade"
+                                                                                        allowfullscreen
+                                                                                ></iframe>
+                                                                        </div>
+                                                                        <p class="map-hint">📍 {project.location}</p>
+                                                                </section>
+                                                        </article>
+
+                        <!-- Mortgage Calculator -->
+                        {#if project?.price}
+                                <section class="mortgage-section" style="margin: 40px 0;">
+                                        <MortgageCalculator price={parseInt(project.price)} />
+                                </section>
+                        {/if}
+
+                        <!-- Right Column - Sidebar --> - Sidebar -->
                                 <aside class="detail-sidebar">
                                         <div class="contact-card">
                                                 <h3>Interested in this property?</h3>
                                                 <p>Fill out the form below and our team will contact you within 24 hours.</p>
+
+                                                <button type="button" class="btn-viewing" on:click={() => (viewingModalOpen = true)}>
+                                                        📅 Request a Viewing
+                                                </button>
 
                                                 {#if submitted}
                                                         <div class="success-message">✓ Your inquiry has been submitted! We'll contact you soon.</div>
@@ -270,13 +494,262 @@
                         <!-- Related Properties -->
                         <section class="related-section">
                                 <h3>Similar Properties</h3>
-                                <p class="coming-soon">More properties coming soon...</p>
+                                {#if relatedProjects.length > 0}
+                                        <div class="related-grid">
+                                                {#each relatedProjects as rp (rp.id)}
+                                                        <a href="/projects/{rp.id}" class="related-card">
+                                                                <div class="related-img">
+                                                                        <img src={rp.imageUrl} alt={rp.title} loading="lazy" />
+                                                                        {#if rp.featured}
+                                                                                <span class="related-featured">⭐</span>
+                                                                        {/if}
+                                                                </div>
+                                                                <div class="related-body">
+                                                                        <h4>{rp.title}</h4>
+                                                                        <p class="related-loc">📍 {rp.location}</p>
+                                                                        <div class="related-specs">
+                                                                                {#if rp.bedrooms}<span>🛏️ {rp.bedrooms}</span>{/if}
+                                                                                {#if rp.bathrooms}<span>🚿 {rp.bathrooms}</span>{/if}
+                                                                        </div>
+                                                                        <span class="related-price">KES {formatPrice(rp.price)}</span>
+                                                                </div>
+                                                        </a>
+                                                {/each}
+                                        </div>
+                                {:else}
+                                        <p class="coming-soon">No similar properties found in this category yet.</p>
+                                {/if}
                         </section>
                 </div>
-        </main>
+
+        <ViewingRequestModal
+                bind:open={viewingModalOpen}
+                projectId={project?.id ?? ''}
+                projectTitle={project?.title ?? ''}
+                projectLocation={project?.location ?? ''}
+        />
+</main>
+
+{#if lightboxOpen}
+        <!-- svelte-ignore a11y-click-events-have-key-events, a11y-no-noninteractive-element-interactions -->
+        <div class="lightbox" on:click={closeLightbox} role="dialog" aria-modal="true" aria-label="Image gallery" tabindex="-1">
+                <button type="button" class="lightbox-close" on:click|stopPropagation={closeLightbox} aria-label="Close gallery">✕</button>
+                <button type="button" class="lightbox-nav prev" on:click|stopPropagation={prevImage} aria-label="Previous image">‹</button>
+                <img src={activeImage} alt={project.title} />
+                <button type="button" class="lightbox-nav next" on:click|stopPropagation={nextImage} aria-label="Next image">›</button>
+                <div class="lightbox-counter">{lightboxIndex + 1} / {galleryImages.length}</div>
+        </div>
+{/if}
 {/if}
 
 <style>
+        .gallery-section { margin: 0 auto 24px; max-width: 1200px; padding: 0 20px; }
+
+        .gallery-main {
+                position: relative;
+                border-radius: 14px;
+                overflow: hidden;
+                cursor: zoom-in;
+                box-shadow: 0 8px 28px rgba(31, 24, 16, 0.15);
+                background: #1f1810;
+        }
+
+        .gallery-main .main-image {
+                width: 100%;
+                height: 480px;
+                object-fit: cover;
+                display: block;
+                transition: transform 0.4s ease;
+        }
+
+        .gallery-main:hover .main-image { transform: scale(1.02); }
+        .gallery-main:focus-visible { outline: 3px solid #d4af37; outline-offset: 3px; }
+
+        .gallery-main .featured-badge {
+                position: absolute;
+                top: 16px;
+                left: 16px;
+                background: rgba(212, 175, 55, 0.95);
+                color: #1f1810;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                z-index: 2;
+        }
+
+        .zoom-hint {
+                position: absolute;
+                bottom: 16px;
+                right: 16px;
+                background: rgba(0,0,0,0.6);
+                color: #fff;
+                padding: 6px 12px;
+                border-radius: 16px;
+                font-size: 0.75rem;
+                opacity: 0;
+                transition: opacity 0.3s;
+        }
+
+        .gallery-main:hover .zoom-hint { opacity: 1; }
+
+        .gallery-nav {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                border: none;
+                background: rgba(0,0,0,0.5);
+                color: #fff;
+                font-size: 24px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+                z-index: 3;
+        }
+
+        .gallery-nav:hover { background: rgba(0,0,0,0.8); }
+        .gallery-nav.prev { left: 16px; }
+        .gallery-nav.next { right: 16px; }
+
+        .gallery-thumbs {
+                display: flex;
+                gap: 10px;
+                margin-top: 12px;
+                overflow-x: auto;
+                padding-bottom: 4px;
+        }
+
+        .gallery-thumb {
+                flex-shrink: 0;
+                width: 90px;
+                height: 70px;
+                border-radius: 8px;
+                overflow: hidden;
+                border: 3px solid transparent;
+                cursor: pointer;
+                padding: 0;
+                background: none;
+                transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .gallery-thumb:hover { transform: translateY(-2px); }
+        .gallery-thumb.active { border-color: #d4af37; }
+        .gallery-thumb:focus-visible { outline: 2px solid #d4af37; outline-offset: 2px; }
+
+        .detail-actions {
+                display: flex;
+                gap: 12px;
+                margin: 20px 0;
+        }
+
+        .action-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 20px;
+                border-radius: 24px;
+                border: 2px solid #eee;
+                background: #fff;
+                color: #1f1810;
+                cursor: pointer;
+                font-size: 0.9rem;
+                font-weight: 600;
+                transition: all 0.2s;
+        }
+
+        .action-btn:hover { border-color: #d4af37; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(212,175,55,0.2); }
+        .action-btn.fav.active { background: #dc3545; color: #fff; border-color: #dc3545; }
+        .action-btn.cmp.active { background: linear-gradient(135deg, #d4af37, #b8941f); color: #1f1810; border-color: #d4af37; }
+        .action-btn.print { background: #f0f0f0; color: #555; }
+        .action-btn.print:hover { background: #1f1810; color: #fff; border-color: #1f1810; }
+
+        /* Print styles */
+        @media print {
+                :global(.main-header),
+                :global(.preloader),
+                :global(footer),
+                :global(.chatbot-container),
+                :global(.compare-bar),
+                :global(.scroll-top),
+                :global(.mobile-bottom-nav),
+                :global(.toaster),
+                :global(.cookie-banner),
+                .detail-actions,
+                .share-wrap,
+                .gallery-nav,
+                .zoom-hint,
+                .contact-card,
+                .mortgage-section {
+                        display: none !important;
+                }
+                .gallery-main .main-image { height: 300px; }
+                .related-section { display: none; }
+        }
+
+        .lightbox {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.92);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: lb-fade 0.25s ease;
+        }
+
+        @keyframes lb-fade { from { opacity: 0; } to { opacity: 1; } }
+
+        .lightbox img {
+                max-width: 90vw;
+                max-height: 80vh;
+                border-radius: 8px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .lightbox-close, .lightbox-nav {
+                position: absolute;
+                border: none;
+                background: rgba(255,255,255,0.15);
+                color: #fff;
+                cursor: pointer;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+        }
+
+        .lightbox-close { top: 24px; right: 24px; width: 44px; height: 44px; font-size: 18px; }
+        .lightbox-nav { top: 50%; transform: translateY(-50%); width: 52px; height: 52px; font-size: 32px; }
+        .lightbox-nav.prev { left: 24px; }
+        .lightbox-nav.next { right: 24px; }
+        .lightbox-close:hover, .lightbox-nav:hover { background: rgba(255,255,255,0.3); }
+
+        .lightbox-counter {
+                position: absolute;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%);
+                color: #fff;
+                font-size: 0.9rem;
+                background: rgba(0,0,0,0.4);
+                padding: 6px 16px;
+                border-radius: 16px;
+        }
+
+        @media (max-width: 600px) {
+                .gallery-main .main-image { height: 280px; }
+                .gallery-thumb { width: 64px; height: 50px; }
+                .detail-actions { flex-wrap: wrap; }
+                .action-btn { flex: 1; justify-content: center; }
+        }
+
         .loading-container,
         .error-container {
                 display: flex;
@@ -308,19 +781,6 @@
                 padding-top: 0;
         }
 
-        .hero-section {
-                position: relative;
-                height: 500px;
-                overflow: hidden;
-                background: #333;
-        }
-
-        .hero-image {
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-        }
-
         .featured-badge {
                 position: absolute;
                 top: 20px;
@@ -344,21 +804,6 @@
                 grid-template-columns: 2fr 1fr;
                 gap: 40px;
                 margin-bottom: 60px;
-        }
-
-        .breadcrumb {
-                font-size: 14px;
-                color: #666;
-                margin-bottom: 20px;
-        }
-
-        .breadcrumb a {
-                color: #0066cc;
-                text-decoration: none;
-        }
-
-        .breadcrumb a:hover {
-                text-decoration: underline;
         }
 
         .detail-content h1 {
@@ -429,19 +874,59 @@
                 margin: 0;
         }
 
-        .amenities-list {
-                list-style: none;
-                padding: 0;
+        /* Amenities icon grid */
+        .amenities-grid {
                 display: grid;
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
                 gap: 12px;
         }
 
-        .amenities-list li {
-                color: #666;
-                padding: 10px;
-                background: #f5f5f5;
-                border-radius: 4px;
+        .amenity-chip {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 14px 16px;
+                background: #f8f5f0;
+                border: 1px solid #eee;
+                border-radius: 10px;
+                font-size: 0.88rem;
+                color: #1f1810;
+                transition: all 0.2s;
+        }
+
+        .amenity-chip:hover {
+                border-color: #d4af37;
+                background: rgba(212, 175, 55, 0.06);
+                transform: translateY(-2px);
+                box-shadow: 0 2px 8px rgba(212, 175, 55, 0.12);
+        }
+
+        .amenity-icon {
+                font-size: 1.3rem;
+                flex-shrink: 0;
+                width: 28px;
+                text-align: center;
+        }
+
+        /* Location map */
+        .map-embed {
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+                margin-bottom: 10px;
+        }
+
+        .map-embed iframe {
+                width: 100%;
+                height: 320px;
+                border: 0;
+                display: block;
+        }
+
+        .map-hint {
+                color: #888;
+                font-size: 0.85rem;
+                margin: 0;
         }
 
         .facts-grid {
@@ -492,6 +977,27 @@
                 color: #1f1810;
                 margin-top: 0;
                 margin-bottom: 10px;
+        }
+
+        .btn-viewing {
+                display: block;
+                width: 100%;
+                background: linear-gradient(135deg, #1f1810 0%, #3d2f25 100%);
+                color: #fff;
+                border: none;
+                padding: 14px;
+                border-radius: 8px;
+                font-weight: 700;
+                font-size: 0.95rem;
+                cursor: pointer;
+                font-family: inherit;
+                margin-bottom: 20px;
+                transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-viewing:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(31, 24, 16, 0.25);
         }
 
         .contact-card > p {
@@ -599,6 +1105,92 @@
                 font-size: 24px;
         }
 
+        .related-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+                gap: 20px;
+        }
+
+        .related-card {
+                display: block;
+                background: #fff;
+                border-radius: 12px;
+                overflow: hidden;
+                text-decoration: none;
+                color: inherit;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+                transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .related-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+        }
+
+        .related-img {
+                position: relative;
+                height: 170px;
+                overflow: hidden;
+        }
+
+        .related-img img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                transition: transform 0.4s;
+        }
+
+        .related-card:hover .related-img img {
+                transform: scale(1.06);
+        }
+
+        .related-featured {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                background: rgba(212, 175, 55, 0.95);
+                color: #1f1810;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.85rem;
+        }
+
+        .related-body {
+                padding: 16px;
+        }
+
+        .related-body h4 {
+                margin: 0 0 6px;
+                font-size: 0.95rem;
+                color: #1f1810;
+                line-height: 1.3;
+        }
+
+        .related-loc {
+                margin: 0 0 8px;
+                font-size: 0.8rem;
+                color: #888;
+        }
+
+        .related-specs {
+                display: flex;
+                gap: 10px;
+                font-size: 0.8rem;
+                color: #666;
+                margin-bottom: 8px;
+        }
+
+        .related-price {
+                display: block;
+                font-weight: 700;
+                color: #d4af37;
+                font-size: 1.05rem;
+        }
+
         .coming-soon {
                 color: #999;
                 font-style: italic;
@@ -614,10 +1206,6 @@
                         gap: 20px;
                 }
 
-                .hero-section {
-                        height: 300px;
-                }
-
                 .detail-content h1 {
                         font-size: 28px;
                 }
@@ -626,9 +1214,7 @@
                         font-size: 28px;
                 }
 
-                .amenities-list {
-                        grid-template-columns: 1fr;
-                }
+
 
                 .facts-grid {
                         grid-template-columns: 1fr;

@@ -1,62 +1,102 @@
 
 <script lang="ts">
-	// Featured properties data
-	const featuredProperties = [
-		{
-			id: 'koch-1',
-			title: '2, 3 & 4 Bedroom Apartments',
-			location: 'Westlands, Nairobi',
-			price: '17700000',
-			bedrooms: '3',
-			bathrooms: '2',
-			imageUrl: '/lib/assets/project-1.jpg'
-		},
-		{
-			id: 'koch-3',
-			title: 'Luxury Apartments with DSQs',
-			location: 'Kilimani, Nairobi',
-			price: '29400000',
-			bedrooms: '4',
-			bathrooms: '3',
-			imageUrl: '/lib/assets/apartments-3.jpg'
-		},
-		{
-			id: 'koch-6',
-			title: '5 Bedroom Villa with Pool',
-			location: 'Loresho, Nairobi',
-			price: '150000000',
-			bedrooms: '5',
-			bathrooms: '6',
-			imageUrl: '/lib/assets/project-2.jpg'
-		}
-	];
+        import { onMount } from 'svelte';
+        import { favorites } from '$lib/stores/favorites';
+        import { compare } from '$lib/stores/compare';
+        import { recentlyViewed } from '$lib/stores/recentlyViewed';
+        import Testimonials from '$lib/components/Testimonials.svelte';
+        import Newsletter from '$lib/components/Newsletter.svelte';
+        import FAQ from '$lib/components/FAQ.svelte';
+        import StatCounter from '$lib/components/StatCounter.svelte';
 
-	// Search filter values
-	let searchLocation = '';
-	let searchType = '';
-	let searchBeds = '';
-	let searchMaxPrice = '';
+        import { goto } from '$app/navigation';
 
-	function filterProperties() {
-		// Filters are handled on the projects page
-		// This function can be expanded to filter on homepage
-	}
+        // ... (existing imports remain)
 
-	function formatPrice(price: string | number | undefined): string {
-		if (!price) return '0';
-		const num = typeof price === 'string' ? parseInt(price) : price;
-		return isNaN(num) ? '0' : num.toLocaleString();
-	}
+        // Featured properties data
+        const featuredProperties = [
+                {
+                        id: 'koch-1',
+                        title: '2, 3 & 4 Bedroom Apartments',
+                        description: 'Modern apartments in the heart of Westlands.',
+                        location: 'Westlands, Nairobi',
+                        price: '17700000',
+                        bedrooms: '3',
+                        bathrooms: '2',
+                        imageUrl: '/lib/assets/project-1.jpg',
+                        category: 'Apartment',
+                        status: 'published' as const,
+                        featured: true,
+                        amenities: 'Parking, Lift, Generator, Borehole, Gym, CCTV'
+                },
+                {
+                        id: 'koch-3',
+                        title: 'Luxury Apartments with DSQs',
+                        description: 'Luxury apartments in Kilimani with rooftop terrace.',
+                        location: 'Kilimani, Nairobi',
+                        price: '29400000',
+                        bedrooms: '4',
+                        bathrooms: '3',
+                        imageUrl: '/lib/assets/apartments-3.jpg',
+                        category: 'Apartment',
+                        status: 'published' as const,
+                        featured: true,
+                        amenities: 'DSQ, Swimming Pool, Gym, Parking, Solar'
+                },
+                {
+                        id: 'koch-6',
+                        title: '5 Bedroom Villa with Pool',
+                        description: 'Magnificent villa in Loresho on half-acre land.',
+                        location: 'Loresho, Nairobi',
+                        price: '150000000',
+                        bedrooms: '5',
+                        bathrooms: '6',
+                        imageUrl: '/lib/assets/project-2.jpg',
+                        category: 'Villa',
+                        status: 'published' as const,
+                        featured: true,
+                        amenities: 'Swimming Pool, Garden, Guest House, Parking, Security'
+                }
+        ];
+
+        // Search filter values
+        let searchLocation = '';
+        let searchType = '';
+        let searchBeds = '';
+        let searchMaxPrice = '';
+
+        function filterProperties() {
+                // Forward filter values to /projects as query params
+                const params = new URLSearchParams();
+                if (searchLocation) params.set('location', searchLocation);
+                if (searchType) params.set('type', searchType);
+                if (searchBeds) params.set('beds', searchBeds);
+                if (searchMaxPrice) params.set('maxPrice', searchMaxPrice);
+                const qs = params.toString();
+                goto(`/projects${qs ? `?${qs}` : ''}`);
+        }
+
+        function formatPrice(price: string | number | undefined): string {
+                if (!price) return '0';
+                const num = typeof price === 'string' ? parseInt(price) : price;
+                return isNaN(num) ? '0' : num.toLocaleString();
+        }
+
+        onMount(() => {
+                favorites.hydrate();
+                compare.hydrate();
+                recentlyViewed.hydrate();
+        });
 </script>
 
     <!-- Preloader Start -->
-	<div class="preloader">
-		<div class="loading-container">
-			<div class="loading"></div>
-			<div id="loading-icon"><img src="/lib/assets/logo/delima-logo.svg" alt="Delima Realtors Logo"></div>
-		</div>
-	</div>
-	<!-- Preloader End -->
+        <div class="preloader">
+                <div class="loading-container">
+                        <div class="loading"></div>
+                        <div id="loading-icon"><img src="/lib/assets/logo/delima-logo.svg" alt="Delima Realtors Logo"></div>
+                </div>
+        </div>
+        <!-- Preloader End -->
 
 
     <!-- Hero Section Start -->
@@ -89,9 +129,9 @@
                     <div class="hero-social-media" style="text-align: right;">
                         <h3 style="color: white; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px;">Follow Us</h3>
                         <ul style="justify-content: flex-end;">
-                            <li><a href="#/" title="facebook" on:click|preventDefault style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fab fa-facebook-f"></i></a></li>
-                            <li><a href="#/" title="instagram" on:click|preventDefault style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fa-brands fa-instagram"></i></a></li>
-                            <li><a href="#" title="twitter" on:click|preventDefault style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fa-brands fa-twitter"></i></a></li>
+                            <li><a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" title="Facebook" style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fab fa-facebook-f"></i></a></li>
+                            <li><a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" title="Instagram" style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fa-brands fa-instagram"></i></a></li>
+                            <li><a href="https://twitter.com/" target="_blank" rel="noopener noreferrer" title="Twitter" style="color: white; border-color: rgba(255,255,255,0.3);"><i class="fa-brands fa-twitter"></i></a></li>
                         </ul>
                     </div>
                     <!-- Hero Social Media End -->
@@ -108,8 +148,8 @@
                 <h3>Find Your Dream Property</h3>
                 <div class="search-filters">
                     <div class="filter-group">
-                        <label>Location</label>
-                        <select bind:value={searchLocation} on:change={filterProperties}>
+                        <label for="search-location">Location</label>
+                        <select id="search-location" bind:value={searchLocation} on:change={filterProperties}>
                             <option value="">All Locations</option>
                             <option value="Westlands">Westlands</option>
                             <option value="Kilimani">Kilimani</option>
@@ -122,8 +162,8 @@
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label>Property Type</label>
-                        <select bind:value={searchType} on:change={filterProperties}>
+                        <label for="search-type">Property Type</label>
+                        <select id="search-type" bind:value={searchType} on:change={filterProperties}>
                             <option value="">All Types</option>
                             <option value="Apartment">Apartment</option>
                             <option value="Villa">Villa</option>
@@ -133,8 +173,8 @@
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label>Bedrooms</label>
-                        <select bind:value={searchBeds} on:change={filterProperties}>
+                        <label for="search-beds">Bedrooms</label>
+                        <select id="search-beds" bind:value={searchBeds} on:change={filterProperties}>
                             <option value="">Any</option>
                             <option value="1">1+</option>
                             <option value="2">2+</option>
@@ -144,8 +184,8 @@
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label>Max Price (KES)</label>
-                        <select bind:value={searchMaxPrice} on:change={filterProperties}>
+                        <label for="search-price">Max Price (KES)</label>
+                        <select id="search-price" bind:value={searchMaxPrice} on:change={filterProperties}>
                             <option value="">No Limit</option>
                             <option value="10000000">10M</option>
                             <option value="20000000">20M</option>
@@ -154,14 +194,60 @@
                             <option value="100000000">100M+</option>
                         </select>
                     </div>
-                    <a href="/projects" class="btn-search">Search Properties</a>
+                    <button type="button" class="btn-search" on:click={filterProperties}>Search Properties</button>
                 </div>
             </div>
         </div>
     </div>
     <!-- Property Search Section End -->
 
-    <!-- Featured Properties Section Start -->
+        <!-- Stats Section -->
+        <section class="home-stats">
+                <div class="container">
+                        <div class="stats-grid">
+                                <div class="stat-item">
+                                        <StatCounter target={500} suffix="+" label="Properties Sold" />
+                                </div>
+                                <div class="stat-item">
+                                        <StatCounter target={12} suffix=" yrs" label="In the Market" />
+                                </div>
+                                <div class="stat-item">
+                                        <StatCounter target={98} suffix="%" label="Client Satisfaction" />
+                                </div>
+                                <div class="stat-item">
+                                        <StatCounter target={8} label="Nairobi Neighborhoods" />
+                                </div>
+                        </div>
+                </div>
+        </section>
+
+        <!-- Recently Viewed Section (only shows if the user has viewed properties) -->
+        {#if $recentlyViewed.length > 0}
+                <section class="recently-viewed-section">
+                        <div class="container">
+                                <div class="section-title text-center">
+                                        <h3>Recently viewed</h3>
+                                        <h2>Pick up where you left off</h2>
+                                </div>
+                                <div class="rv-grid">
+                                        {#each $recentlyViewed as prop (prop.id)}
+                                                <a href="/projects/{prop.id}" class="rv-card">
+                                                        <div class="rv-img">
+                                                                <img src={prop.imageUrl} alt={prop.title} loading="lazy" />
+                                                        </div>
+                                                        <div class="rv-body">
+                                                                <h4>{prop.title}</h4>
+                                                                <p class="rv-loc">📍 {prop.location}</p>
+                                                                <span class="rv-price">KES {formatPrice(prop.price)}</span>
+                                                        </div>
+                                                </a>
+                                        {/each}
+                                </div>
+                        </div>
+                </section>
+        {/if}
+
+        <!-- Featured Properties Section Start -->
     <div class="featured-properties">
         <div class="container">
             <div class="section-title text-center">
@@ -170,27 +256,35 @@
             </div>
             
             <div class="row">
-                {#each featuredProperties as property}
-                    <div class="col-lg-4 col-md-6 mb-4">
-                        <div class="property-card wow fadeInUp">
-                            <div class="card-image">
-                                <img src={property.imageUrl} alt={property.title} />
-                                <div class="featured-tag">⭐ Featured</div>
-                                <div class="price-tag">KES {formatPrice(property.price)}</div>
-                            </div>
-                            <div class="card-content">
-                                <h4>{property.title}</h4>
-                                <p class="location">📍 {property.location}</p>
-                                <div class="specs">
-                                    <span>🛏️ {property.bedrooms} Beds</span>
-                                    <span>🚿 {property.bathrooms} Baths</span>
-                                </div>
-                                <a href="/projects/{property.id}" class="btn-view">View Details</a>
-                            </div>
+                                {#each featuredProperties as property (property.id)}
+                                        <div class="col-lg-4 col-md-6 mb-4">
+                                                <div class="property-card wow fadeInUp home-fp-card">
+                                                        <div class="card-image">
+                                                                <a href="/projects/{property.id}">
+                                                                        <img src={property.imageUrl} alt={property.title} />
+                                                                </a>
+                                                                <div class="featured-tag">⭐ Featured</div>
+                                                                <div class="price-tag">KES {formatPrice(property.price)}</div>
+                                                                <button type="button" class="home-card-action home-fav" class:active={$favorites.includes(property.id)} aria-label={$favorites.includes(property.id) ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={$favorites.includes(property.id)} on:click|stopPropagation={() => favorites.toggle(property.id)}>
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill={$favorites.includes(property.id) ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                                                                </button>
+                                                                <button type="button" class="home-card-action home-cmp" class:active={$compare.some((p) => p.id === property.id)} class:disabled={$compare.length >= 3 && !$compare.some((p) => p.id === property.id)} aria-label={$compare.some((p) => p.id === property.id) ? 'Remove from comparison' : 'Add to comparison'} aria-pressed={$compare.some((p) => p.id === property.id)} on:click|stopPropagation={() => compare.toggle(property)}>
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="18" rx="1" /><rect x="14" y="3" width="7" height="18" rx="1" /></svg>
+                                                                </button>
+                                                        </div>
+                                                        <div class="card-content">
+                                                                <h4>{property.title}</h4>
+                                                                <p class="location">📍 {property.location}</p>
+                                                                <div class="specs">
+                                                                        <span>🛏️ {property.bedrooms} Beds</span>
+                                                                        <span>🚿 {property.bathrooms} Baths</span>
+                                                                </div>
+                                                                <a href="/projects/{property.id}" class="btn-view">View Details</a>
+                                                        </div>
+                                                </div>
+                                        </div>
+                                {/each}
                         </div>
-                    </div>
-                {/each}
-            </div>
             
             <div class="text-center mt-4">
                 <a href="/projects" class="btn-default">View All Properties</a>
@@ -1283,8 +1377,8 @@
                         <!-- Quary Box Start -->
                         <div class="query-box wow fadeInUp">
                             <div class="query-box-content">
-                                <h3>Still you have doubts?</h3>
-                                <p>Standard dummy text ever</p>
+                                <h3>Still have doubts?</h3>
+                                <p>Check our FAQ below or reach out directly — we're happy to help.</p>
                             </div>
 
                             <div class="query-box-btn">
@@ -1396,7 +1490,7 @@
                     <div class="post-item wow fadeInUp">
                         <!-- Post Featured Image Start-->
                         <div class="post-featured-image">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
+                            <a href="/blog/buying-first-home-nairobi" data-cursor-text="Read">
                                 <figure class="image-anime">
                                     <img src="/lib/assets/post-1.jpg" alt="">
                                 </figure>    
@@ -1408,14 +1502,14 @@
                         <div class="post-item-body">
                             <!-- Post Item Content Start -->
                             <div class="post-item-content">
-                                <h2><a href="#" on:click|preventDefault>Sustainable living: eco-friendly home features</a></h2>
+                                <h2><a href="/blog/buying-first-home-nairobi">Sustainable living: eco-friendly home features</a></h2>
                                 <p>We explore sustainable design elements, from solar panels to energy-efficient appliances....</p>
                             </div>
                             <!-- Post Item Content End -->
 
                             <!-- Post Item Button Start-->
                             <div class="post-item-btn">
-                                <a href="#" class="readmore-btn" on:click|preventDefault>read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
+                                <a href="/blog/buying-first-home-nairobi" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
                             </div>
                             <!-- Post Item Button End-->
                         </div>
@@ -1429,7 +1523,7 @@
                     <div class="post-item wow fadeInUp" data-wow-delay="0.2s">
                         <!-- Post Featured Image Start-->
                         <div class="post-featured-image">
-                            <a href="#" data-cursor-text="View" on:click|preventDefault>
+                            <a href="/blog/buying-first-home-nairobi" data-cursor-text="Read">
                                 <figure class="image-anime">
                                     <img src="/lib/assets/post-2.jpg" alt="">
                                 </figure>    
@@ -1441,14 +1535,14 @@
                         <div class="post-item-body">
                             <!-- Post Item Content Start -->
                             <div class="post-item-content">
-                                <h2><a href="#" on:click|preventDefault>Small spaces: design tips for compact homes</a></h2>
+                                <h2><a href="/blog/buying-first-home-nairobi">Small spaces: design tips for compact homes</a></h2>
                                 <p>In this article, We share design strategies to maximize space, optimize storage, and make    </p>
                             </div>
                             <!-- Post Item Content End -->
 
                             <!-- Post Item Button Start-->
                             <div class="post-item-btn">
-                                <a href="#" on:click|preventDefault>read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
+                                <a href="/blog/buying-first-home-nairobi" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt="" aria-hidden="true"></a>
                             </div>
                             <!-- Post Item Button End-->
                         </div>
@@ -1462,7 +1556,7 @@
                     <div class="post-item wow fadeInUp" data-wow-delay="0.4s">
                         <!-- Post Featured Image Start-->
                         <div class="post-featured-image">
-                            <a href="/blog-single"  data-cursor-text="View">
+                            <a href="/blog/dsq-what-to-know"  data-cursor-text="View">
                                 <figure class="image-anime">
                                     <img src="/lib/assets/post-3.jpg" alt="">
                                 </figure>    
@@ -1474,14 +1568,14 @@
                         <div class="post-item-body">
                             <!-- Post Item Content Start -->
                             <div class="post-item-content">
-                                <h2><a href="#" on:click|preventDefault>Home buying process: a step-by-step guide</a></h2>
+                                <h2><a href="/blog/buying-first-home-nairobi">Home buying process: a step-by-step guide</a></h2>
                                 <p>This post breaks down the home buying process into easy-to-follow steps...</p>
                             </div>
                             <!-- Post Item Content End -->
 
                             <!-- Post Item Button Start-->
                             <div class="post-item-btn">
-                                <a href="#" class="readmore-btn" on:click|preventDefault>read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
+                                <a href="/blog/buying-first-home-nairobi" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
                             </div>
                             <!-- Post Item Button End-->
                         </div>
@@ -1493,6 +1587,13 @@
         </div>
     </div>
     <!-- Our Blog Section End -->
+
+        <!-- FAQ -->
+        <FAQ />
+
+        <!-- Testimonials + Newsletter -->
+        <Testimonials />
+        <Newsletter />
 
 <!-- Custom Styles for Homepage -->
 <style>
@@ -1639,6 +1740,44 @@
         font-size: 14px;
     }
 
+        /* Home featured-card fav + compare action buttons */
+        .home-fp-card .card-image {
+                position: relative;
+        }
+
+        .home-card-action {
+                position: absolute;
+                top: 12px;
+                width: 34px;
+                height: 34px;
+                border-radius: 50%;
+                border: none;
+                background: rgba(255, 255, 255, 0.92);
+                color: #1f1810;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.25s ease;
+                backdrop-filter: blur(4px);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+                z-index: 5;
+        }
+
+        .home-fav { right: 12px; }
+        .home-cmp { right: 50px; }
+
+        .home-card-action:hover {
+                background: #fff;
+                transform: scale(1.12);
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+        }
+
+        .home-fav.active { background: #dc3545; color: #fff; }
+        .home-cmp.active { background: #d4af37; color: #1f1810; }
+        .home-cmp.disabled { opacity: 0.4; cursor: not-allowed; }
+        .home-cmp.disabled:hover { transform: none; }
+
     .card-content {
         padding: 25px;
     }
@@ -1704,6 +1843,165 @@
 
         .search-box h3 {
             font-size: 22px;
+        }
+    }
+
+    /* Recently viewed section */
+    .recently-viewed-section {
+        padding: 50px 0;
+        background: #fff;
+    }
+
+    .recently-viewed-section .section-title {
+        margin-bottom: 30px;
+    }
+
+    .recently-viewed-section .section-title h3 {
+        color: #d4af37;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        letter-spacing: 2px;
+    }
+
+    .recently-viewed-section .section-title h2 {
+        color: #1f1810;
+        font-size: 1.8rem;
+        margin: 8px 0 0;
+    }
+
+    .rv-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 20px;
+    }
+
+    .rv-card {
+        display: block;
+        background: #f9f9f9;
+        border-radius: 12px;
+        overflow: hidden;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .rv-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+
+    .rv-img {
+        height: 150px;
+        overflow: hidden;
+    }
+
+    .rv-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s;
+    }
+
+    .rv-card:hover .rv-img img {
+        transform: scale(1.06);
+    }
+
+    .rv-body {
+        padding: 14px;
+    }
+
+    .rv-body h4 {
+        margin: 0 0 6px;
+        font-size: 0.9rem;
+        color: #1f1810;
+        line-height: 1.3;
+    }
+
+    .rv-loc {
+        margin: 0 0 8px;
+        font-size: 0.78rem;
+        color: #888;
+    }
+
+    .rv-price {
+        display: block;
+        font-weight: 700;
+        color: #d4af37;
+        font-size: 1rem;
+    }
+
+    /* Stats section */
+    .home-stats {
+        background: linear-gradient(135deg, #1f1810 0%, #2d2418 100%);
+        padding: 60px 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .home-stats::before {
+        content: '';
+        position: absolute;
+        top: -40%;
+        left: -10%;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(212, 175, 55, 0.12), transparent 70%);
+        border-radius: 50%;
+    }
+
+    .home-stats::after {
+        content: '';
+        position: absolute;
+        bottom: -40%;
+        right: -10%;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(212, 175, 55, 0.1), transparent 70%);
+        border-radius: 50%;
+    }
+
+    .home-stats .container {
+        position: relative;
+        z-index: 1;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 20px;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stat-item:last-child {
+        border-right: none;
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .stat-item {
+            border-right: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 20px;
+        }
+        .stat-item:nth-child(odd) {
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        .stat-item {
+            border-right: none !important;
         }
     }
 </style>
