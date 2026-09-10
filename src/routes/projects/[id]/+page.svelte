@@ -2,6 +2,7 @@
         import { page } from '$app/stores';
         import { onMount } from 'svelte';
         import MortgageCalculator from '$lib/components/MortgageCalculator.svelte';
+        import ShareBar from '$lib/components/ShareBar.svelte';
         import { favorites } from '$lib/stores/favorites';
         import { compare } from '$lib/stores/compare';
 
@@ -251,9 +252,14 @@
                                         {$compare.some((p) => p.id === project.id) ? 'In compare' : 'Compare'}
                                 </button>
                         </div>
-                </div>
 
-                <div class="container">
+<!-- Share bar -->
+					<div class="share-wrap" style="margin-top: 16px;">
+						<ShareBar url="/projects/{project.id}" title={project.title} />
+					</div>
+			</div>
+
+			<div class="container">
                         <div class="detail-grid">
                                 <!-- Left Column -->
                                 <article class="detail-content">
