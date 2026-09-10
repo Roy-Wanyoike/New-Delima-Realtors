@@ -3,6 +3,7 @@
         import { onMount } from 'svelte';
         import MortgageCalculator from '$lib/components/MortgageCalculator.svelte';
         import ShareBar from '$lib/components/ShareBar.svelte';
+        import ViewingRequestModal from '$lib/components/ViewingRequestModal.svelte';
         import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
         import { favorites } from '$lib/stores/favorites';
         import { compare } from '$lib/stores/compare';
@@ -27,6 +28,7 @@
         };
         let submitting = false;
         let submitted = false;
+        let viewingModalOpen = false;
 
         onMount(async () => {
                 const projectId = $page.params.id;
@@ -419,6 +421,10 @@
                                                 <h3>Interested in this property?</h3>
                                                 <p>Fill out the form below and our team will contact you within 24 hours.</p>
 
+                                                <button type="button" class="btn-viewing" on:click={() => (viewingModalOpen = true)}>
+                                                        📅 Request a Viewing
+                                                </button>
+
                                                 {#if submitted}
                                                         <div class="success-message">✓ Your inquiry has been submitted! We'll contact you soon.</div>
                                                 {:else}
@@ -515,7 +521,15 @@
                                 {/if}
                         </section>
                 </div>
-        
+
+        <ViewingRequestModal
+                bind:open={viewingModalOpen}
+                projectId={project?.id ?? ''}
+                projectTitle={project?.title ?? ''}
+                projectLocation={project?.location ?? ''}
+        />
+</main>
+
 {#if lightboxOpen}
         <!-- svelte-ignore a11y-click-events-have-key-events, a11y-no-noninteractive-element-interactions -->
         <div class="lightbox" on:click={closeLightbox} role="dialog" aria-modal="true" aria-label="Image gallery" tabindex="-1">
@@ -525,6 +539,7 @@
                 <button type="button" class="lightbox-nav next" on:click|stopPropagation={nextImage} aria-label="Next image">›</button>
                 <div class="lightbox-counter">{lightboxIndex + 1} / {galleryImages.length}</div>
         </div>
+{/if}
 {/if}
 
 <style>
@@ -734,12 +749,7 @@
                 .detail-actions { flex-wrap: wrap; }
                 .action-btn { flex: 1; justify-content: center; }
         }
-</style>
 
-</main>
-{/if}
-
-<style>
         .loading-container,
         .error-container {
                 display: flex;
@@ -967,6 +977,27 @@
                 color: #1f1810;
                 margin-top: 0;
                 margin-bottom: 10px;
+        }
+
+        .btn-viewing {
+                display: block;
+                width: 100%;
+                background: linear-gradient(135deg, #1f1810 0%, #3d2f25 100%);
+                color: #fff;
+                border: none;
+                padding: 14px;
+                border-radius: 8px;
+                font-weight: 700;
+                font-size: 0.95rem;
+                cursor: pointer;
+                font-family: inherit;
+                margin-bottom: 20px;
+                transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-viewing:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(31, 24, 16, 0.25);
         }
 
         .contact-card > p {
