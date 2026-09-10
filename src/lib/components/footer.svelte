@@ -45,6 +45,12 @@
                         <a href="/projects" style="color: #aaa; text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;">Properties</a>
                     </li>
                     <li style="margin-bottom: 12px;">
+                        <a href="/neighborhoods" style="color: #aaa; text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;">Neighborhoods</a>
+                    </li>
+                    <li style="margin-bottom: 12px;">
+                        <a href="/agents" style="color: #aaa; text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;">Our Agents</a>
+                    </li>
+                    <li style="margin-bottom: 12px;">
                         <a href="/services" style="color: #aaa; text-decoration: none; font-size: 0.95rem; transition: color 0.3s ease;">Services</a>
                     </li>
                     <li>
