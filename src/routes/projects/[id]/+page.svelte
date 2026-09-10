@@ -3,8 +3,10 @@
         import { onMount } from 'svelte';
         import MortgageCalculator from '$lib/components/MortgageCalculator.svelte';
         import ShareBar from '$lib/components/ShareBar.svelte';
+        import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
         import { favorites } from '$lib/stores/favorites';
         import { compare } from '$lib/stores/compare';
+        import { recentlyViewed } from '$lib/stores/recentlyViewed';
 
         let project: any = null;
         let loading = true;
@@ -63,6 +65,7 @@
                                         galleryImages = [project.imageUrl, ...complement.filter((c) => c !== project.imageUrl)].slice(0, 6);
                                         activeImage = galleryImages[0] ?? '';
                                         favorites.hydrate();
+                                        recentlyViewed.add(project);
                                 } else {
                                         error = 'Project not found or not published';
                                 }
@@ -100,6 +103,7 @@
                                 galleryImages = [project.imageUrl, ...complement.filter((c) => c !== project.imageUrl)].slice(0, 6);
                                 activeImage = galleryImages[0] ?? '';
                                 favorites.hydrate();
+                                                recentlyViewed.add(project);
                         }
                 } catch (err) {
                         console.error('Error loading project:', err);
@@ -108,6 +112,28 @@
                         loading = false;
                 }
         });
+
+        // Demo projects for the "Similar Properties" section (same category, excluding current).
+        const allDemoProjects: any[] = [
+                { id: 'koch-1', title: '2, 3 & 4 Bedroom Apartments', description: 'Modern apartments in the heart of Westlands.', location: 'Westlands, Nairobi', price: '17700000', bedrooms: '3', bathrooms: '2', imageUrl: '/lib/assets/project-1.jpg', category: 'Apartment', status: 'published', featured: true, amenities: 'Parking, Lift, Generator, Borehole, Gym, CCTV' },
+                { id: 'koch-2', title: '2, 3, 4 & 5 Bedroom Apartments', description: 'Spacious family apartments on Riara Road.', location: 'Riara Road, Nairobi', price: '10700000', bedrooms: '3', bathrooms: '2', imageUrl: '/lib/assets/apartments-2.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Garden, Security, Play Area' },
+                { id: 'koch-3', title: '3, 4 & 5 Bedroom Apartments with DSQs', description: 'Luxury apartments in Kilimani.', location: 'Kilimani, Nairobi', price: '29400000', bedrooms: '4', bathrooms: '3', imageUrl: '/lib/assets/apartments-3.jpg', category: 'Apartment', status: 'published', featured: true, amenities: 'DSQ, Swimming Pool, Gym, Parking, Solar' },
+                { id: 'koch-4', title: '1, 2 & 3 Bedroom Apartment', description: 'Affordable apartments in Kilimani.', location: 'Kilimani, Nairobi', price: '5900000', bedrooms: '2', bathrooms: '1', imageUrl: '/lib/assets/apartments-1.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'Parking, Security, Water Storage' },
+                { id: 'koch-5', title: '1 Bedroom Apartment', description: 'Stylish 1-bedroom apartment in Westlands.', location: 'Westlands, Nairobi', price: '21900000', bedrooms: '1', bathrooms: '1', imageUrl: '/lib/assets/apartments-4.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'Gym, Parking, Rooftop Terrace, Security' },
+                { id: 'koch-6', title: '5 Bedroom Villa', description: 'Magnificent villa in Loresho.', location: 'Loresho, Nairobi', price: '150000000', bedrooms: '5', bathrooms: '6', imageUrl: '/lib/assets/project-2.jpg', category: 'Villa', status: 'published', featured: true, amenities: 'Swimming Pool, Garden, Guest House, Parking, Security' },
+                { id: 'koch-7', title: '4 Bedroom Villa', description: 'Elegant villa in Kitisuru.', location: 'Kitisuru, Nairobi', price: '85000000', bedrooms: '4', bathrooms: '5', imageUrl: '/lib/assets/project-3.jpg', category: 'Villa', status: 'published', featured: true, amenities: 'Garden, Parking, Staff Quarters, Security, View' },
+                { id: 'koch-8', title: '4 Bedroom Townhouses', description: 'Modern townhouses in Langata.', location: 'Langata, Nairobi', price: '35900000', bedrooms: '4', bathrooms: '4', imageUrl: '/lib/assets/amenities-1.jpg', category: 'Townhouse', status: 'published', featured: false, amenities: 'Swimming Pool, Garden, Parking, Playground' },
+                { id: 'koch-9', title: '3 Bedroom Apartment With DSQ', description: 'Executive apartment in Westlands.', location: 'Westlands, Nairobi', price: '22100000', bedrooms: '3', bathrooms: '3', imageUrl: '/lib/assets/amenities-2.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Lift, Generator, Security' },
+                { id: 'koch-10', title: '4 Bedroom Apartment with DSQ', description: 'Spacious apartment in Kileleshwa.', location: 'Kileleshwa, Nairobi', price: '22000000', bedrooms: '4', bathrooms: '4', imageUrl: '/lib/assets/amenities-3.jpg', category: 'Apartment', status: 'published', featured: false, amenities: 'DSQ, Parking, Gym, Lift, Security' },
+                { id: 'koch-11', title: '5 Bedroom Apartment With DSQ', description: 'Luxurious penthouse in Kileleshwa.', location: 'Kileleshwa, Nairobi', price: '41000000', bedrooms: '5', bathrooms: '6', imageUrl: '/lib/assets/amenities-4.jpg', category: 'Penthouse', status: 'published', featured: true, amenities: 'DSQ, Private Lift, Rooftop Terrace, Parking, Gym' },
+                { id: 'koch-12', title: 'Studio And 1 Bedroom Apartment', description: 'Compact units in Kilimani.', location: 'Kilimani, Nairobi', price: '6400000', bedrooms: '1', bathrooms: '1', imageUrl: '/lib/assets/amenities-5.jpg', category: 'Studio', status: 'published', featured: false, amenities: 'Parking, Security, Internet Ready' }
+        ];
+
+        $: relatedProjects = project
+                ? allDemoProjects
+                                .filter((p) => p.id !== project.id && p.category === project.category)
+                                .slice(0, 3)
+                : [];
 
         function openLightbox(idx: number) {
                 lightboxIndex = idx;
@@ -254,18 +280,20 @@
                         </div>
 
 <!-- Share bar -->
-					<div class="share-wrap" style="margin-top: 16px;">
-						<ShareBar url="/projects/{project.id}" title={project.title} />
-					</div>
-			</div>
+                                        <div class="share-wrap" style="margin-top: 16px;">
+                                                <ShareBar url="/projects/{project.id}" title={project.title} />
+                                        </div>
+                        </div>
 
-			<div class="container">
+                        <div class="container">
                         <div class="detail-grid">
                                 <!-- Left Column -->
                                 <article class="detail-content">
-                                        <div class="breadcrumb">
-                                                <a href="/">Home</a> / <a href="/projects">Properties</a> / <span>{project.title}</span>
-                                        </div>
+                                        <Breadcrumbs items={[
+                                                { label: 'Home', href: '/' },
+                                                { label: 'Properties', href: '/projects' },
+                                                { label: project.title }
+                                        ]} />
 
                                         <h1>{project.title}</h1>
                                         <div class="meta-info">
@@ -418,7 +446,31 @@
                         <!-- Related Properties -->
                         <section class="related-section">
                                 <h3>Similar Properties</h3>
-                                <p class="coming-soon">More properties coming soon...</p>
+                                {#if relatedProjects.length > 0}
+                                        <div class="related-grid">
+                                                {#each relatedProjects as rp (rp.id)}
+                                                        <a href="/projects/{rp.id}" class="related-card">
+                                                                <div class="related-img">
+                                                                        <img src={rp.imageUrl} alt={rp.title} loading="lazy" />
+                                                                        {#if rp.featured}
+                                                                                <span class="related-featured">⭐</span>
+                                                                        {/if}
+                                                                </div>
+                                                                <div class="related-body">
+                                                                        <h4>{rp.title}</h4>
+                                                                        <p class="related-loc">📍 {rp.location}</p>
+                                                                        <div class="related-specs">
+                                                                                {#if rp.bedrooms}<span>🛏️ {rp.bedrooms}</span>{/if}
+                                                                                {#if rp.bathrooms}<span>🚿 {rp.bathrooms}</span>{/if}
+                                                                        </div>
+                                                                        <span class="related-price">KES {formatPrice(rp.price)}</span>
+                                                                </div>
+                                                        </a>
+                                                {/each}
+                                        </div>
+                                {:else}
+                                        <p class="coming-soon">No similar properties found in this category yet.</p>
+                                {/if}
                         </section>
                 </div>
         
@@ -677,21 +729,6 @@
                 margin-bottom: 60px;
         }
 
-        .breadcrumb {
-                font-size: 14px;
-                color: #666;
-                margin-bottom: 20px;
-        }
-
-        .breadcrumb a {
-                color: #0066cc;
-                text-decoration: none;
-        }
-
-        .breadcrumb a:hover {
-                text-decoration: underline;
-        }
-
         .detail-content h1 {
                 font-size: 42px;
                 color: #1f1810;
@@ -928,6 +965,92 @@
                 color: #1f1810;
                 margin-bottom: 20px;
                 font-size: 24px;
+        }
+
+        .related-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+                gap: 20px;
+        }
+
+        .related-card {
+                display: block;
+                background: #fff;
+                border-radius: 12px;
+                overflow: hidden;
+                text-decoration: none;
+                color: inherit;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+                transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .related-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+        }
+
+        .related-img {
+                position: relative;
+                height: 170px;
+                overflow: hidden;
+        }
+
+        .related-img img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                transition: transform 0.4s;
+        }
+
+        .related-card:hover .related-img img {
+                transform: scale(1.06);
+        }
+
+        .related-featured {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                background: rgba(212, 175, 55, 0.95);
+                color: #1f1810;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.85rem;
+        }
+
+        .related-body {
+                padding: 16px;
+        }
+
+        .related-body h4 {
+                margin: 0 0 6px;
+                font-size: 0.95rem;
+                color: #1f1810;
+                line-height: 1.3;
+        }
+
+        .related-loc {
+                margin: 0 0 8px;
+                font-size: 0.8rem;
+                color: #888;
+        }
+
+        .related-specs {
+                display: flex;
+                gap: 10px;
+                font-size: 0.8rem;
+                color: #666;
+                margin-bottom: 8px;
+        }
+
+        .related-price {
+                display: block;
+                font-weight: 700;
+                color: #d4af37;
+                font-size: 1.05rem;
         }
 
         .coming-soon {
