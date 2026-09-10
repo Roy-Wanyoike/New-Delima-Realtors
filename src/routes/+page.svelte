@@ -5,6 +5,7 @@
         import { compare } from '$lib/stores/compare';
         import Testimonials from '$lib/components/Testimonials.svelte';
         import Newsletter from '$lib/components/Newsletter.svelte';
+        import FAQ from '$lib/components/FAQ.svelte';
 
         // Featured properties data
         const featuredProperties = [
@@ -1527,6 +1528,9 @@
         </div>
     </div>
     <!-- Our Blog Section End -->
+
+        <!-- FAQ -->
+        <FAQ />
 
         <!-- Testimonials + Newsletter -->
         <Testimonials />
