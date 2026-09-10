@@ -56,7 +56,7 @@
                 if (s < step) step = s;
         }
 
-        function handleSubmit() {
+        async function handleSubmit() {
                 if (!form.name || !form.email || !form.phone) {
                         toasts.error('Please fill in all contact fields.');
                         return;
@@ -67,12 +67,35 @@
                 }
 
                 submitting = true;
-                // Simulate submission (in production: insert into a 'valuations' table).
-                setTimeout(() => {
+                try {
+                        const { supabase } = await import('$lib/supabase');
+                        if (!supabase) {
+                                throw new Error('Our system is temporarily unavailable. Please call +254 727 523 752.');
+                        }
+                        const { error: insertError } = await supabase.from('valuations').insert([
+                                {
+                                        name: form.name,
+                                        email: form.email,
+                                        phone: form.phone,
+                                        property_type: form.propertyType,
+                                        bedrooms: form.bedrooms,
+                                        bathrooms: form.bathrooms,
+                                        size: form.size,
+                                        location: form.location,
+                                        neighborhood: form.neighborhood,
+                                        condition: form.condition,
+                                        notes: form.additionalNotes,
+                                        status: 'new'
+                                }
+                        ]);
+                        if (insertError) throw insertError;
                         submitting = false;
                         submitted = true;
                         toasts.success('🎉 Valuation request submitted! We\'ll contact you within 48 hours.');
-                }, 1000);
+                } catch (err: any) {
+                        submitting = false;
+                        toasts.error(err?.message || 'Failed to submit. Please try again or call us.');
+                }
         }
 
         function resetForm() {
