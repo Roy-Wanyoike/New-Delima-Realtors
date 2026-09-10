@@ -205,6 +205,26 @@
         function formatPrice(price: string) {
                 return parseInt(price).toLocaleString();
         }
+
+        function getAmenityIcon(amenity: string): string {
+                const a = amenity.toLowerCase();
+                if (a.includes('pool')) return '🏊';
+                if (a.includes('gym')) return '💪';
+                if (a.includes('garden')) return '🌿';
+                if (a.includes('parking') || a.includes('garage')) return '🚗';
+                if (a.includes('security') || a.includes('cctv')) return '🔒';
+                if (a.includes('lift') || a.includes('elevator')) return '🛗';
+                if (a.includes('generator') || a.includes('power') || a.includes('solar')) return '⚡';
+                if (a.includes('borehole') || a.includes('water')) return '💧';
+                if (a.includes('dsq') || a.includes('servant')) return '🏠';
+                if (a.includes('terrace') || a.includes('balcony')) return '🌅';
+                if (a.includes('guest')) return '🛏️';
+                if (a.includes('play') || a.includes('playground')) return '游乐';
+                if (a.includes('internet') || a.includes('wifi')) return '📶';
+                if (a.includes('view')) return '👁️';
+                if (a.includes('staff')) return '👨‍🔧';
+                return '✓';
+        }
 </script>
 
 <svelte:window on:keydown={handleLightboxKey} />
@@ -277,7 +297,11 @@
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="18" rx="1" /><rect x="14" y="3" width="7" height="18" rx="1" /></svg>
                                         {$compare.some((p) => p.id === project.id) ? 'In compare' : 'Compare'}
                                 </button>
-                        </div>
+                                                        <button type="button" class="action-btn print" on:click={() => window.print()} aria-label="Print property details">
+                                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+                                                                Print
+                                                        </button>
+                                                </div>
 
 <!-- Share bar -->
                                         <div class="share-wrap" style="margin-top: 16px;">
@@ -317,16 +341,19 @@
                                         </section>
 
                                         <!-- Amenities -->
-                                        {#if project.amenities}
-                                                <section class="section">
-                                                        <h3>Amenities & Features</h3>
-                                                        <ul class="amenities-list">
-                                                                {#each project.amenities.split(',') as amenity}
-                                                                        <li>✓ {amenity.trim()}</li>
-                                                                {/each}
-                                                        </ul>
-                                                </section>
-                                        {/if}
+                                                        {#if project.amenities}
+                                                                <section class="section">
+                                                                        <h3>Amenities & Features</h3>
+                                                                        <div class="amenities-grid">
+                                                                                {#each project.amenities.split(',') as amenity}
+                                                                                        <div class="amenity-chip">
+                                                                                                <span class="amenity-icon" aria-hidden="true">{getAmenityIcon(amenity.trim())}</span>
+                                                                                                <span>{amenity.trim()}</span>
+                                                                                        </div>
+                                                                                {/each}
+                                                                        </div>
+                                                                </section>
+                                                        {/if}
 
                                         <!-- Quick Facts -->
                                         <section class="section">
@@ -362,7 +389,22 @@
                                                         </div>
                                                 </div>
                                         </section>
-                                </article>
+
+                                                                <!-- Location Map -->
+                                                                <section class="section">
+                                                                        <h3>Location</h3>
+                                                                        <div class="map-embed">
+                                                                                <iframe
+                                                                                        title="Property location map"
+                                                                                        src="https://www.google.com/maps?q={encodeURIComponent(project.location)}&output=embed"
+                                                                                        loading="lazy"
+                                                                                        referrerpolicy="no-referrer-when-downgrade"
+                                                                                        allowfullscreen
+                                                                                ></iframe>
+                                                                        </div>
+                                                                        <p class="map-hint">📍 {project.location}</p>
+                                                                </section>
+                                                        </article>
 
                         <!-- Mortgage Calculator -->
                         {#if project?.price}
@@ -609,6 +651,31 @@
         .action-btn:hover { border-color: #d4af37; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(212,175,55,0.2); }
         .action-btn.fav.active { background: #dc3545; color: #fff; border-color: #dc3545; }
         .action-btn.cmp.active { background: linear-gradient(135deg, #d4af37, #b8941f); color: #1f1810; border-color: #d4af37; }
+        .action-btn.print { background: #f0f0f0; color: #555; }
+        .action-btn.print:hover { background: #1f1810; color: #fff; border-color: #1f1810; }
+
+        /* Print styles */
+        @media print {
+                :global(.main-header),
+                :global(.preloader),
+                :global(footer),
+                :global(.chatbot-container),
+                :global(.compare-bar),
+                :global(.scroll-top),
+                :global(.mobile-bottom-nav),
+                :global(.toaster),
+                :global(.cookie-banner),
+                .detail-actions,
+                .share-wrap,
+                .gallery-nav,
+                .zoom-hint,
+                .contact-card,
+                .mortgage-section {
+                        display: none !important;
+                }
+                .gallery-main .main-image { height: 300px; }
+                .related-section { display: none; }
+        }
 
         .lightbox {
                 position: fixed;
@@ -797,19 +864,59 @@
                 margin: 0;
         }
 
-        .amenities-list {
-                list-style: none;
-                padding: 0;
+        /* Amenities icon grid */
+        .amenities-grid {
                 display: grid;
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
                 gap: 12px;
         }
 
-        .amenities-list li {
-                color: #666;
-                padding: 10px;
-                background: #f5f5f5;
-                border-radius: 4px;
+        .amenity-chip {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 14px 16px;
+                background: #f8f5f0;
+                border: 1px solid #eee;
+                border-radius: 10px;
+                font-size: 0.88rem;
+                color: #1f1810;
+                transition: all 0.2s;
+        }
+
+        .amenity-chip:hover {
+                border-color: #d4af37;
+                background: rgba(212, 175, 55, 0.06);
+                transform: translateY(-2px);
+                box-shadow: 0 2px 8px rgba(212, 175, 55, 0.12);
+        }
+
+        .amenity-icon {
+                font-size: 1.3rem;
+                flex-shrink: 0;
+                width: 28px;
+                text-align: center;
+        }
+
+        /* Location map */
+        .map-embed {
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+                margin-bottom: 10px;
+        }
+
+        .map-embed iframe {
+                width: 100%;
+                height: 320px;
+                border: 0;
+                display: block;
+        }
+
+        .map-hint {
+                color: #888;
+                font-size: 0.85rem;
+                margin: 0;
         }
 
         .facts-grid {
@@ -1076,9 +1183,7 @@
                         font-size: 28px;
                 }
 
-                .amenities-list {
-                        grid-template-columns: 1fr;
-                }
+
 
                 .facts-grid {
                         grid-template-columns: 1fr;
