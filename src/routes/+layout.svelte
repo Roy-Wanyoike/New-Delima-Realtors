@@ -7,6 +7,7 @@
         import Toaster from '$lib/components/Toaster.svelte';
         import CookieConsent from '$lib/components/CookieConsent.svelte';
         import SearchModal from '$lib/components/SearchModal.svelte';
+        import MobileBottomNav from '$lib/components/MobileBottomNav.svelte';
         import { onMount } from 'svelte';
         import { theme } from '$lib/stores/theme';
 
@@ -27,6 +28,7 @@
         <Toaster />
         <CookieConsent />
         <SearchModal />
+        <MobileBottomNav />
 </div>
 
 <style>
@@ -39,6 +41,13 @@
         .app-main {
                 flex: 1;
                 padding-top: 0;
+        }
+
+        /* Add bottom padding on mobile so content isn't hidden behind the bottom nav. */
+        @media (max-width: 768px) {
+                :global(.app-main) {
+                        padding-bottom: 70px;
+                }
         }
 
         /* Dark mode overrides — applied via [data-theme='dark'] on <html>. */
