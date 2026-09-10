@@ -6,6 +6,7 @@
         import ScrollToTop from '$lib/components/ScrollToTop.svelte';
         import Toaster from '$lib/components/Toaster.svelte';
         import CookieConsent from '$lib/components/CookieConsent.svelte';
+        import SearchModal from '$lib/components/SearchModal.svelte';
         import { onMount } from 'svelte';
         import { theme } from '$lib/stores/theme';
 
@@ -25,6 +26,7 @@
         <ScrollToTop />
         <Toaster />
         <CookieConsent />
+        <SearchModal />
 </div>
 
 <style>
