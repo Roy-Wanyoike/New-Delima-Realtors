@@ -9,6 +9,10 @@
         import FAQ from '$lib/components/FAQ.svelte';
         import StatCounter from '$lib/components/StatCounter.svelte';
 
+        import { goto } from '$app/navigation';
+
+        // ... (existing imports remain)
+
         // Featured properties data
         const featuredProperties = [
                 {
@@ -62,8 +66,14 @@
         let searchMaxPrice = '';
 
         function filterProperties() {
-                // Filters are handled on the projects page
-                // This function can be expanded to filter on homepage
+                // Forward filter values to /projects as query params
+                const params = new URLSearchParams();
+                if (searchLocation) params.set('location', searchLocation);
+                if (searchType) params.set('type', searchType);
+                if (searchBeds) params.set('beds', searchBeds);
+                if (searchMaxPrice) params.set('maxPrice', searchMaxPrice);
+                const qs = params.toString();
+                goto(`/projects${qs ? `?${qs}` : ''}`);
         }
 
         function formatPrice(price: string | number | undefined): string {
@@ -184,7 +194,7 @@
                             <option value="100000000">100M+</option>
                         </select>
                     </div>
-                    <a href="/projects" class="btn-search">Search Properties</a>
+                    <button type="button" class="btn-search" on:click={filterProperties}>Search Properties</button>
                 </div>
             </div>
         </div>
@@ -211,33 +221,33 @@
                 </div>
         </section>
 
-	<!-- Recently Viewed Section (only shows if the user has viewed properties) -->
-	{#if $recentlyViewed.length > 0}
-		<section class="recently-viewed-section">
-			<div class="container">
-				<div class="section-title text-center">
-					<h3>Recently viewed</h3>
-					<h2>Pick up where you left off</h2>
-				</div>
-				<div class="rv-grid">
-					{#each $recentlyViewed as prop (prop.id)}
-						<a href="/projects/{prop.id}" class="rv-card">
-							<div class="rv-img">
-								<img src={prop.imageUrl} alt={prop.title} loading="lazy" />
-							</div>
-							<div class="rv-body">
-								<h4>{prop.title}</h4>
-								<p class="rv-loc">📍 {prop.location}</p>
-								<span class="rv-price">KES {formatPrice(prop.price)}</span>
-							</div>
-						</a>
-					{/each}
-				</div>
-			</div>
-		</section>
-	{/if}
+        <!-- Recently Viewed Section (only shows if the user has viewed properties) -->
+        {#if $recentlyViewed.length > 0}
+                <section class="recently-viewed-section">
+                        <div class="container">
+                                <div class="section-title text-center">
+                                        <h3>Recently viewed</h3>
+                                        <h2>Pick up where you left off</h2>
+                                </div>
+                                <div class="rv-grid">
+                                        {#each $recentlyViewed as prop (prop.id)}
+                                                <a href="/projects/{prop.id}" class="rv-card">
+                                                        <div class="rv-img">
+                                                                <img src={prop.imageUrl} alt={prop.title} loading="lazy" />
+                                                        </div>
+                                                        <div class="rv-body">
+                                                                <h4>{prop.title}</h4>
+                                                                <p class="rv-loc">📍 {prop.location}</p>
+                                                                <span class="rv-price">KES {formatPrice(prop.price)}</span>
+                                                        </div>
+                                                </a>
+                                        {/each}
+                                </div>
+                        </div>
+                </section>
+        {/if}
 
-	<!-- Featured Properties Section Start -->
+        <!-- Featured Properties Section Start -->
     <div class="featured-properties">
         <div class="container">
             <div class="section-title text-center">
@@ -1367,8 +1377,8 @@
                         <!-- Quary Box Start -->
                         <div class="query-box wow fadeInUp">
                             <div class="query-box-content">
-                                <h3>Still you have doubts?</h3>
-                                <p>Standard dummy text ever</p>
+                                <h3>Still have doubts?</h3>
+                                <p>Check our FAQ below or reach out directly — we're happy to help.</p>
                             </div>
 
                             <div class="query-box-btn">
@@ -1480,7 +1490,7 @@
                     <div class="post-item wow fadeInUp">
                         <!-- Post Featured Image Start-->
                         <div class="post-featured-image">
-                            <a href="/about" data-cursor-text="Read">
+                            <a href="/blog/buying-first-home-nairobi" data-cursor-text="Read">
                                 <figure class="image-anime">
                                     <img src="/lib/assets/post-1.jpg" alt="">
                                 </figure>    
@@ -1492,14 +1502,14 @@
                         <div class="post-item-body">
                             <!-- Post Item Content Start -->
                             <div class="post-item-content">
-                                <h2><a href="/about">Sustainable living: eco-friendly home features</a></h2>
+                                <h2><a href="/blog/buying-first-home-nairobi">Sustainable living: eco-friendly home features</a></h2>
                                 <p>We explore sustainable design elements, from solar panels to energy-efficient appliances....</p>
                             </div>
                             <!-- Post Item Content End -->
 
                             <!-- Post Item Button Start-->
                             <div class="post-item-btn">
-                                <a href="/about" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
+                                <a href="/blog/buying-first-home-nairobi" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
                             </div>
                             <!-- Post Item Button End-->
                         </div>
@@ -1513,7 +1523,7 @@
                     <div class="post-item wow fadeInUp" data-wow-delay="0.2s">
                         <!-- Post Featured Image Start-->
                         <div class="post-featured-image">
-                            <a href="/about" data-cursor-text="Read">
+                            <a href="/blog/buying-first-home-nairobi" data-cursor-text="Read">
                                 <figure class="image-anime">
                                     <img src="/lib/assets/post-2.jpg" alt="">
                                 </figure>    
@@ -1525,14 +1535,14 @@
                         <div class="post-item-body">
                             <!-- Post Item Content Start -->
                             <div class="post-item-content">
-                                <h2><a href="/about">Small spaces: design tips for compact homes</a></h2>
+                                <h2><a href="/blog/buying-first-home-nairobi">Small spaces: design tips for compact homes</a></h2>
                                 <p>In this article, We share design strategies to maximize space, optimize storage, and make    </p>
                             </div>
                             <!-- Post Item Content End -->
 
                             <!-- Post Item Button Start-->
                             <div class="post-item-btn">
-                                <a href="/about" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt="" aria-hidden="true"></a>
+                                <a href="/blog/buying-first-home-nairobi" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt="" aria-hidden="true"></a>
                             </div>
                             <!-- Post Item Button End-->
                         </div>
@@ -1546,7 +1556,7 @@
                     <div class="post-item wow fadeInUp" data-wow-delay="0.4s">
                         <!-- Post Featured Image Start-->
                         <div class="post-featured-image">
-                            <a href="/blog-single"  data-cursor-text="View">
+                            <a href="/blog/dsq-what-to-know"  data-cursor-text="View">
                                 <figure class="image-anime">
                                     <img src="/lib/assets/post-3.jpg" alt="">
                                 </figure>    
@@ -1558,14 +1568,14 @@
                         <div class="post-item-body">
                             <!-- Post Item Content Start -->
                             <div class="post-item-content">
-                                <h2><a href="/about">Home buying process: a step-by-step guide</a></h2>
+                                <h2><a href="/blog/buying-first-home-nairobi">Home buying process: a step-by-step guide</a></h2>
                                 <p>This post breaks down the home buying process into easy-to-follow steps...</p>
                             </div>
                             <!-- Post Item Content End -->
 
                             <!-- Post Item Button Start-->
                             <div class="post-item-btn">
-                                <a href="/about" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
+                                <a href="/blog/buying-first-home-nairobi" class="readmore-btn">read more <img src="/lib/assets/arrow-primary.svg" alt=""></a>
                             </div>
                             <!-- Post Item Button End-->
                         </div>

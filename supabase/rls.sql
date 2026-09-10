@@ -119,3 +119,53 @@ create policy "instagram: admin write"
     on public.instagram_posts for all to authenticated
     using (public.is_admin())
     with check (public.is_admin());
+
+-- ---------------------------------------------------------------------------
+-- valuations
+--   * anon / public:  INSERT only (submit a valuation request).
+--   * admin:          SELECT / UPDATE / DELETE.
+-- ---------------------------------------------------------------------------
+alter table public.valuations enable row level security;
+
+drop policy if exists "valuations: public insert" on public.valuations;
+create policy "valuations: public insert"
+    on public.valuations for insert to anon, authenticated
+    with check (true);
+
+drop policy if exists "valuations: admin read" on public.valuations;
+create policy "valuations: admin read"
+    on public.valuations for select to authenticated
+    using (public.is_admin());
+
+drop policy if exists "valuations: admin update" on public.valuations;
+create policy "valuations: admin update"
+    on public.valuations for update to authenticated
+    using (public.is_admin())
+    with check (public.is_admin());
+
+drop policy if exists "valuations: admin delete" on public.valuations;
+create policy "valuations: admin delete"
+    on public.valuations for delete to authenticated
+    using (public.is_admin());
+
+-- ---------------------------------------------------------------------------
+-- newsletter_subscribers
+--   * anon / public:  INSERT only (subscribe). CANNOT read (anti-enumeration).
+--   * admin:          SELECT / DELETE.
+-- ---------------------------------------------------------------------------
+alter table public.newsletter_subscribers enable row level security;
+
+drop policy if exists "newsletter: public insert" on public.newsletter_subscribers;
+create policy "newsletter: public insert"
+    on public.newsletter_subscribers for insert to anon, authenticated
+    with check (true);
+
+drop policy if exists "newsletter: admin read" on public.newsletter_subscribers;
+create policy "newsletter: admin read"
+    on public.newsletter_subscribers for select to authenticated
+    using (public.is_admin());
+
+drop policy if exists "newsletter: admin delete" on public.newsletter_subscribers;
+create policy "newsletter: admin delete"
+    on public.newsletter_subscribers for delete to authenticated
+    using (public.is_admin());
