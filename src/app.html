@@ -1,107 +1,71 @@
 <!doctype html>
 <html lang="en">
-        <head>
-                <meta charset="utf-8" />
+	<head>
+		<meta charset="utf-8" />
 
-                <link
-                        rel="shortcut icon"
-                        type="image/svg+xml"
-                        href="%sveltekit.assets%/lib/assets/logo/delima-logo.svg"
-                />
+		<link
+			rel="shortcut icon"
+			type="image/svg+xml"
+			href="%sveltekit.assets%/lib/assets/logo/delima-logo.svg"
+		/>
 
-                <!-- Google Fonts -->
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-                <link
-                        href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100..900;1,100..900&display=swap"
-                        rel="stylesheet"
-                />
+		<!-- Google Fonts -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100..900;1,100..900&display=swap"
+			rel="stylesheet"
+		/>
 
-                <!-- Bootstrap Css -->
-                <link rel="stylesheet" href="%sveltekit.assets%/lib/css/bootstrap.min.css" />
+		<!-- Bootstrap Css (to be replaced with Tailwind/custom CSS — see ADR-002) -->
+		<link rel="stylesheet" href="%sveltekit.assets%/lib/css/bootstrap.min.css" />
 
-                <!-- SlickNav Css -->
-                <link rel="stylesheet" href="%sveltekit.assets%/lib/css/slicknav.min.css" />
+		<!-- Font Awesome -->
+		<link rel="stylesheet" href="%sveltekit.assets%/lib/css/all.min.css" />
 
-                <!-- Swiper Css -->
-                <link rel="stylesheet" href="%sveltekit.assets%/lib/css/swiper-bundle.min.css" />
+		<!-- Main Custom Css -->
+		<link rel="stylesheet" href="%sveltekit.assets%/lib/css/custom.css" />
 
-                <!-- Font Awesome -->
-                <link rel="stylesheet" href="%sveltekit.assets%/lib/css/all.min.css" />
+		<!-- jQuery (dependency of function.js — to be removed in ADR-002 Phase 1) -->
+		<script defer src="%sveltekit.assets%/lib/js/jquery-3.7.1.min.js"></script>
 
-                <!-- Animated Css -->
-                <link rel="stylesheet" href="%sveltekit.assets%/lib/css/animate.css" />
+		<!-- Bootstrap JS (to be replaced with Svelte components — see ADR-002) -->
+		<script defer src="%sveltekit.assets%/lib/js/bootstrap.min.js"></script>
 
-                <!-- Magnific Popup -->
-                <link rel="stylesheet" href="%sveltekit.assets%/lib/css/magnific-popup.css" />
+		<!-- Swiper (used by property carousels — to be replaced with CSS scroll-snap) -->
+		<script defer src="%sveltekit.assets%/lib/js/swiper-bundle.min.js"></script>
 
-                <!-- Mouse Cursor -->
-                <link rel="stylesheet" href="%sveltekit.assets%/lib/css/mousecursor.css" />
+		<!-- Counter (used by animated stats — to be replaced with IntersectionObserver) -->
+		<script defer src="%sveltekit.assets%/lib/js/jquery.waypoints.min.js"></script>
+		<script defer src="%sveltekit.assets%/lib/js/jquery.counterup.min.js"></script>
 
-                <!-- Main Custom Css -->
-                <link rel="stylesheet" href="%sveltekit.assets%/lib/css/custom.css" />
+		<!-- Wow (scroll reveal — to be replaced with CSS animations) -->
+		<script defer src="%sveltekit.assets%/lib/js/wow.min.js"></script>
 
-                <!-- jQuery -->
-                <script defer src="%sveltekit.assets%/lib/js/jquery-3.7.1.min.js"></script>
+		<!-- Main Custom JS (theme init — to be refactored to remove jQuery dep) -->
+		<script defer src="%sveltekit.assets%/lib/js/function.js"></script>
 
-                <!-- Bootstrap -->
-                <script defer src="%sveltekit.assets%/lib/js/bootstrap.min.js"></script>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="description" content="Delima Realtors — Nairobi premier real estate agency. Buy, sell, and manage luxury properties in Westlands, Kilimani, Karen, and more." />
+		<meta name="theme-color" content="#1f1810" />
 
-                <!-- SlickNav -->
-                <script defer src="%sveltekit.assets%/lib/js/jquery.slicknav.js"></script>
+		<!-- Prevent dark-mode FOUC: apply the saved theme before hydration. -->
+		<script>
+			(function () {
+				try {
+					var t = localStorage.getItem('delima_theme');
+					if (!t) {
+						t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+					}
+					document.documentElement.setAttribute('data-theme', t);
+				} catch (e) {}
+			})();
+		</script>
 
-                <!-- Swiper -->
-                <script defer src="%sveltekit.assets%/lib/js/swiper-bundle.min.js"></script>
+		%sveltekit.head%
+	</head>
 
-                <!-- Counter -->
-                <script defer src="%sveltekit.assets%/lib/js/jquery.waypoints.min.js"></script>
-                <script defer src="%sveltekit.assets%/lib/js/jquery.counterup.min.js"></script>
-
-                <!-- Magnific Popup -->
-                <script defer src="%sveltekit.assets%/lib/js/jquery.magnific-popup.min.js"></script>
-
-                <!-- Validator -->
-                <script defer src="%sveltekit.assets%/lib/js/validator.min.js"></script>
-
-                <!-- Magic Cursor -->
-                <script defer src="%sveltekit.assets%/lib/js/gsap.min.js"></script>
-                <script defer src="%sveltekit.assets%/lib/js/ScrollTrigger.min.js"></script>
-                <script defer src="%sveltekit.assets%/lib/js/SplitText.js"></script>
-                <script defer src="%sveltekit.assets%/lib/js/magiccursor.js"></script>
-
-                <!-- Parallax -->
-                <script defer src="%sveltekit.assets%/lib/js/parallaxie.js"></script>
-
-                <!-- YTPlayer -->
-                <script defer src="%sveltekit.assets%/lib/js/jquery.mb.YTPlayer.min.js"></script>
-
-                <!-- Wow -->
-                <script defer src="%sveltekit.assets%/lib/js/wow.min.js"></script>
-
-                <!-- Main Custom JS -->
-                <script defer src="%sveltekit.assets%/lib/js/function.js"></script>
-
-                <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <meta name="description" content="Delima Realtors — Nairobi premier real estate agency. Buy, sell, and manage luxury properties in Westlands, Kilimani, Karen, and more." />
-                <meta name="theme-color" content="#1f1810" />
-
-                <!-- Prevent dark-mode FOUC: apply the saved theme before hydration. -->
-                <script>
-                        (function () {
-                                try {
-                                        var t = localStorage.getItem('delima_theme');
-                                        if (!t) {
-                                                t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                                        }
-                                        document.documentElement.setAttribute('data-theme', t);
-                                } catch (e) {}
-                        })();
-                </script>
-
-                %sveltekit.head%
-        </head>
-
-        <body data-sveltekit-preload-data="hover">
-                <div style="display: contents">%sveltekit.body%</div>
-        </body>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
 </html>
