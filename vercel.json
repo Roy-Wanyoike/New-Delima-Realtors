@@ -1,5 +1,0 @@
-{
-  "buildCommand": "yarn build",
-  "framework": "sveltekit",
-  "installCommand": "yarn install --frozen-lockfile"
-}
