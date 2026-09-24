@@ -1,32 +1,41 @@
-// Delima Realtors Platform 2.0 — home experience (classic edition)
-// Redesign: classic estate-agency language inspired by onlyhomesproperties.co.ke —
-// serif headlines with gold italic accents, integrated purpose/type/location
-// search, ink-navy stats band, badge-adorned location cards, split why-us,
-// testimonial carousel, gold CTA band. Sections are local subcomponents.
+// Delima Realtors 3.0 — home experience
+// Owner: REV-2 (homepage engineer).
+// Default export: HomeView. A mobile-first, single-page homepage composed of:
+//   1. full-bleed hero with floating search card   5. neighbourhoods atlas (./neighborhood-guide)
+//   2. live stats strip (overlapping hero)         6. why-Delima feature grid
+//   3. featured listings grid                      7. client stories (./testimonials)
+//   4. buy / rent split                            8. AI concierge band
+//                                                  9. closing CTA banner
+// All sections handle loading skeletons and empty data gracefully (DB may be
+// empty while another agent seeds).
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import {
-  AlertTriangle,
-  Bot,
-  Check,
-  ChevronLeft,
-  ChevronRight,
+  ArrowRight,
+  BadgeCheck,
+  Building2,
+  Handshake,
+  Home,
   KeyRound,
   LineChart,
+  MapPin,
   Phone,
-  RotateCcw,
   Search,
   ShieldCheck,
   Sparkles,
+  Star,
+  Users,
+  Wallet,
 } from 'lucide-react'
-import type { FilterState, MarketPoint, PropertyType } from '@/lib/types'
-import { PROPERTY_TYPES } from '@/lib/types'
+import type { PropertyType } from '@/lib/types'
 import { useAppStore } from '@/lib/store'
 import { useInsights, useProperties } from '@/hooks/use-delima-data'
+import { formatKes, formatNumber } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -34,716 +43,613 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { NeighborhoodCard, PropertyMiniCard, SmartImage } from './mini-cards'
-import type { NeighborhoodStat } from './mini-cards'
+import { Container, EmptyState, Reveal, Section, SectionHeading, StatBlock } from './ui-kit'
+import { PropertyCard, PropertyCardSkeleton } from './property-card'
 import Testimonials from './testimonials'
 import NeighborhoodGuide from './neighborhood-guide'
 
+/* ------------------------------------------------------------------ */
+/* Constants                                                           */
+/* ------------------------------------------------------------------ */
+
 const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2000&auto=format&fit=crop'
+  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2400&auto=format&fit=crop'
 
-const WHY_IMAGE =
-  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1400&auto=format&fit=crop'
+const BUY_IMAGE =
+  'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1600&auto=format&fit=crop'
 
-const TYPE_LABELS: Record<PropertyType, string> = {
-  APARTMENT: 'Apartment',
-  VILLA: 'Villa',
-  TOWNHOUSE: 'Townhouse',
-  PENTHOUSE: 'Penthouse',
-  OFFICE: 'Office',
-  LAND: 'Land',
-  COMMERCIAL: 'Commercial',
-}
+const RENT_IMAGE =
+  'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1600&auto=format&fit=crop'
 
-/* Classic badges per neighborhood slug (reference-style TRENDING/PREMIUM tags) */
-const HOOD_BADGES: Record<string, string> = {
-  karen: 'Signature',
-  westlands: 'Trending',
-  muthaiga: 'Prestige',
-  runda: 'Family choice',
-  kilimani: 'High yield',
-  kileleshwa: 'Rising star',
-  langata: 'Spacious',
-  kitisuru: 'Quiet luxury',
-  loresho: 'Garden living',
-}
+const SUPPORT_PHONE = '+254727523752'
+const SUPPORT_PHONE_LABEL = '+254 727 523 752'
 
-const VALUE_PROPS = [
-  {
-    icon: KeyRound,
-    title: 'Off-market access',
-    body: 'Quiet listings in Karen and Runda that never reach the portals — shared first with the Delima circle.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Title due diligence',
-    body: 'Every title is vetted by our legal desk before it reaches your shortlist, so you sign with total peace of mind.',
-  },
-  {
-    icon: LineChart,
-    title: 'Market intelligence',
-    body: 'Twelve months of price-per-sqm data across nine neighbourhoods, distilled into advice you can act on.',
-  },
+const BUDGET_OPTIONS = [5_000_000, 10_000_000, 25_000_000, 50_000_000, 100_000_000] as const
+
+const TYPE_OPTIONS: Array<{ value: PropertyType; label: string }> = [
+  { value: 'TOWNHOUSE', label: 'Houses & townhouses' },
+  { value: 'VILLA', label: 'Villas' },
+  { value: 'APARTMENT', label: 'Apartments' },
+  { value: 'PENTHOUSE', label: 'Penthouses' },
+  { value: 'LAND', label: 'Land' },
 ]
 
+const TRUST_CHIPS = [
+  { icon: ShieldCheck, label: 'Title-checked listings' },
+  { icon: BadgeCheck, label: 'Verified owners' },
+  { icon: KeyRound, label: 'End-to-end support' },
+] as const
+
+const EASE = [0.22, 1, 0.36, 1] as const
+
 /* ------------------------------------------------------------------ */
-/* HomeView                                                            */
+/* 1. HERO                                                             */
 /* ------------------------------------------------------------------ */
 
-export default function HomeView() {
-  const { insights, neighborhoods } = useInsights()
-  const { properties } = useProperties()
-  const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
-
-  // Build per-neighborhood 12-month market series for the NeighborhoodGuide
-  const marketStatsBySlug = useMemo(() => {
-    const map: Record<string, MarketPoint[]> = {}
-    if (insights?.neighborhoods) {
-      for (const n of insights.neighborhoods) map[n.slug] = n.series
-    }
-    return map
-  }, [insights])
-
+function SearchTrigger({ icon: Icon, children, label }: { icon: typeof MapPin; children: React.ReactNode; label: string }) {
   return (
-    <div className="flex flex-col">
-      <HeroSection />
-      <StatsBand />
-      <FeaturedSection />
-      <LocationsSection />
-      <WhyDelimaSection />
-      <AIConciergeBand />
-      {neighborhoods.length > 0 && (
-        <NeighborhoodGuide
-          neighborhoods={neighborhoods}
-          marketStats={marketStatsBySlug}
-          properties={properties}
-          onExploreProperties={slug => setFilterAndGo({ neighborhood: slug }, 'properties')}
-        />
-      )}
-      <Testimonials />
-      <CtaBand />
-    </div>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/* Helpers                                                             */
-/* ------------------------------------------------------------------ */
-
-function FadeUp({
-  children,
-  className,
-  delay = 0,
-}: {
-  children: React.ReactNode
-  className?: string
-  delay?: number
-}) {
-  return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] }}
+    <SelectTrigger
+      aria-label={label}
+      className="h-11 min-h-[44px] w-full rounded-xl border-line bg-white text-sm font-medium text-ink"
     >
-      {children}
-    </motion.div>
-  )
-}
-
-function ErrorRetryCard({ message }: { message: string }) {
-  return (
-    <div className="luxury-shadow mx-auto flex max-w-xl flex-col items-center gap-3 rounded-xl border border-border bg-card p-8 text-center">
-      <span className="gold-gradient-bg flex size-12 items-center justify-center rounded-full">
-        <AlertTriangle className="size-5 text-[#1f1810]" aria-hidden="true" />
+      <span className="flex min-w-0 items-center gap-2">
+        <Icon className="size-4 shrink-0 text-brand" aria-hidden="true" />
+        <SelectValue />
       </span>
-      <h3 className="font-display text-xl">Something interrupted the view</h3>
-      <p className="text-sm text-muted-foreground">{message}</p>
-      <Button
-        onClick={() => window.location.reload()}
-        className="gold-gradient-bg min-h-[44px] px-6 font-semibold text-[#1f1810] hover:opacity-90"
-      >
-        <RotateCcw className="size-4" aria-hidden="true" /> Try again
-      </Button>
-    </div>
+    </SelectTrigger>
   )
 }
 
-/* ------------------------------------------------------------------ */
-/* HERO — classic: serif headline, dual CTA, integrated search card    */
-/* ------------------------------------------------------------------ */
-
-interface HeroSearch {
-  status: 'ALL' | 'FOR_SALE' | 'FOR_RENT'
-  type: PropertyType | 'ALL'
-  neighborhood: string // slug or 'ALL'
-}
-
-function HeroSection() {
+function HeroSearchCard() {
   const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
-  const { neighborhoods } = useInsights()
-  const [search, setSearch] = useState<HeroSearch>({ status: 'ALL', type: 'ALL', neighborhood: 'ALL' })
-  const [q, setQ] = useState('')
+  const { neighborhoods, loading: hoodsLoading } = useInsights()
 
-  const POPULAR = useMemo(
-    () =>
-      neighborhoods
-        .filter(n => ['karen', 'runda', 'westlands', 'muthaiga', 'kilimani'].includes(n.slug))
-        .concat(neighborhoods.filter(n => !['karen', 'runda', 'westlands', 'muthaiga', 'kilimani'].includes(n.slug)))
-        .slice(0, 6),
-    [neighborhoods],
-  )
+  const [location, setLocation] = useState('ALL')
+  const [type, setType] = useState('ALL')
+  const [budget, setBudget] = useState('ALL')
 
-  function submitSearch(e: React.FormEvent<HTMLFormElement>) {
+  function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const filters: Partial<FilterState> = {
-      status: search.status,
-      type: search.type,
-      neighborhood: search.neighborhood,
-      q,
-    }
-    setFilterAndGo(filters, 'properties')
+    setFilterAndGo(
+      {
+        neighborhood: location,
+        type: type === 'ALL' ? 'ALL' : (type as PropertyType),
+        maxPrice: budget === 'ALL' ? null : Number(budget),
+      },
+      'properties',
+    )
   }
 
   return (
-    <section className="relative flex min-h-[88vh] items-center overflow-hidden">
-      <SmartImage
-        eager
+    <form onSubmit={submit} className="rounded-2xl bg-white p-3 shadow-xl">
+      <div className="grid gap-2 sm:grid-cols-4">
+        {hoodsLoading && neighborhoods.length === 0 ? (
+          <div className="shimmer h-11 min-h-[44px] rounded-xl" aria-hidden="true" />
+        ) : (
+          <Select value={location} onValueChange={setLocation}>
+            <SearchTrigger icon={MapPin} label="Location">
+              <SelectValue />
+            </SearchTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Nairobi</SelectItem>
+              {neighborhoods.map(n => (
+                <SelectItem key={n.slug} value={n.slug}>
+                  {n.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        <Select value={type} onValueChange={setType}>
+          <SearchTrigger icon={Building2} label="Property type">
+            <SelectValue />
+          </SearchTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Any type</SelectItem>
+            {TYPE_OPTIONS.map(t => (
+              <SelectItem key={t.value} value={t.value}>
+                {t.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={budget} onValueChange={setBudget}>
+          <SearchTrigger icon={Wallet} label="Maximum budget">
+            <SelectValue />
+          </SearchTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Any budget</SelectItem>
+            {BUDGET_OPTIONS.map(v => (
+              <SelectItem key={v} value={String(v)}>
+                {formatKes(v, { compact: true })}
+                {v === BUDGET_OPTIONS[BUDGET_OPTIONS.length - 1] ? '+' : ''}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <button
+          type="submit"
+          className="btn-sun inline-flex h-11 min-h-[44px] items-center justify-center gap-2 rounded-xl px-6 text-sm font-bold"
+        >
+          <Search className="size-4" aria-hidden="true" />
+          Search
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function Hero() {
+  return (
+    <section className="relative flex min-h-[85vh] items-center">
+      <Image
         src={HERO_IMAGE}
-        alt="Golden-hour view of a luxury Nairobi villa with a pool"
-        className="absolute inset-0 h-full w-full"
-        fallbackLabel="Delima"
-      />
-      {/* classic navy wash — deep on the left where the type sits, open on the right */}
-      <div
-        className="absolute inset-0 bg-gradient-to-r from-[#0a1626]/95 via-[#10233f]/75 to-[#10233f]/30"
-        aria-hidden="true"
+        alt="Modern Nairobi home with floor-to-ceiling glass glowing at dusk"
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover"
       />
       <div
-        className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-ink/90 to-transparent"
         aria-hidden="true"
+        className="absolute inset-0 bg-gradient-to-b from-brand-deep/85 via-brand-deep/50 to-transparent"
       />
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-        <div className="max-w-2xl">
+      <Container className="relative z-10 py-24 sm:py-28">
+        <div className="max-w-3xl">
           <motion.p
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="text-xs font-bold uppercase tracking-[0.3em] text-gold-soft"
+            transition={{ duration: 0.55, ease: EASE }}
+            className="text-xs font-bold uppercase tracking-[0.28em] text-sun"
           >
-            Nairobi · Luxury &amp; Investment Property
+            Nairobi&rsquo;s Trusted Realtors
           </motion.p>
+
           <motion.h1
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-5 font-display text-4xl leading-[1.1] text-white sm:text-6xl"
+            transition={{ duration: 0.65, delay: 0.08, ease: EASE }}
+            className="mt-4 text-4xl font-extrabold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-6xl"
           >
-            Homes of <span className="accent-italic">distinction</span> in the
-            city&rsquo;s finest addresses
+            Find a home <span className="text-sun">worthy of your next chapter</span>.
           </motion.h1>
+
           <motion.p
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-5 max-w-xl text-sm leading-relaxed text-white/75 sm:text-base"
+            transition={{ duration: 0.65, delay: 0.16, ease: EASE }}
+            className="mt-5 max-w-xl text-base leading-relaxed text-white/80 sm:text-lg"
           >
-            From leafy Karen villas to penthouses above Westlands, Delima curates
-            Kenya&rsquo;s most exceptional residences — including off-market homes you
-            will not find on any portal.
+            Title-checked villas, apartments and land across Nairobi&rsquo;s finest neighbourhoods
+            &mdash; with honest pricing, verified owners and a team that carries the process from
+            first viewing to final signature.
           </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-8 flex flex-wrap gap-3"
-          >
-            <Button
-              onClick={() => setFilterAndGo({}, 'properties')}
-              className="gold-gradient-bg min-h-[48px] rounded-full px-8 font-semibold text-[#1f1810] hover:opacity-90"
-            >
-              Explore Properties
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setFilterAndGo({}, 'agents')}
-              className="min-h-[48px] rounded-full border-white/40 bg-white/5 px-8 text-white backdrop-blur hover:bg-white hover:text-espresso"
-            >
-              Speak to an Agent
-            </Button>
-          </motion.div>
-
-          {/* integrated classic search card */}
-          <motion.form
-            onSubmit={submitSearch}
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="luxury-shadow mt-10 grid grid-cols-1 gap-3 rounded-xl border border-white/20 bg-white/[0.08] p-3 backdrop-blur-xl sm:grid-cols-[1fr_1fr_1fr_auto]"
-            aria-label="Property search"
-          >
-            <div>
-              <label htmlFor="hero-purpose" className="mb-1.5 block text-[0.6rem] font-bold uppercase tracking-[0.22em] text-white/60">
-                Purpose
-              </label>
-              <Select
-                value={search.status}
-                onValueChange={v => setSearch(s => ({ ...s, status: v as HeroSearch['status'] }))}
-              >
-                <SelectTrigger id="hero-purpose" className="h-11 min-h-[44px] border-white/25 bg-white/10 text-white data-[placeholder]:text-white/70">
-                  <SelectValue placeholder="Any Purpose" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Any Purpose</SelectItem>
-                  <SelectItem value="FOR_SALE">Buy</SelectItem>
-                  <SelectItem value="FOR_RENT">Rent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label htmlFor="hero-type" className="mb-1.5 block text-[0.6rem] font-bold uppercase tracking-[0.22em] text-white/60">
-                Property Type
-              </label>
-              <Select
-                value={search.type}
-                onValueChange={v => setSearch(s => ({ ...s, type: v as HeroSearch['type'] }))}
-              >
-                <SelectTrigger id="hero-type" className="h-11 min-h-[44px] border-white/25 bg-white/10 text-white data-[placeholder]:text-white/70">
-                  <SelectValue placeholder="Any Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Any Type</SelectItem>
-                  {PROPERTY_TYPES.map(t => (
-                    <SelectItem key={t} value={t}>
-                      {TYPE_LABELS[t]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label htmlFor="hero-location" className="mb-1.5 block text-[0.6rem] font-bold uppercase tracking-[0.22em] text-white/60">
-                Location
-              </label>
-              <Select
-                value={search.neighborhood}
-                onValueChange={v => setSearch(s => ({ ...s, neighborhood: v }))}
-              >
-                <SelectTrigger id="hero-location" className="h-11 min-h-[44px] border-white/25 bg-white/10 text-white data-[placeholder]:text-white/70">
-                  <SelectValue placeholder="Any Location" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Any Location</SelectItem>
-                  {neighborhoods.map(n => (
-                    <SelectItem key={n.slug} value={n.slug}>
-                      {n.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-end">
-              <Button
-                type="submit"
-                className="gold-gradient-bg h-11 min-h-[44px] w-full gap-2 rounded-md px-6 font-semibold text-[#1f1810] hover:opacity-90 sm:w-auto"
-              >
-                <Search className="size-4" aria-hidden="true" /> Search
-              </Button>
-            </div>
-            {/* free-text search row (hidden submit keeps Enter working) */}
-            <Input
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              placeholder="Or search 'villa in Karen with pool'…"
-              aria-label="Search properties by keyword"
-              className="h-11 min-h-[44px] border-white/25 bg-white/10 text-white placeholder:text-white/50 sm:col-span-4"
-            />
-          </motion.form>
-
-          {/* popular areas */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.45 }}
-            className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2"
-          >
-            <span className="text-[0.65rem] font-bold uppercase tracking-[0.22em] text-white/50">
-              Popular:
-            </span>
-            {POPULAR.map(n => (
-              <button
-                key={n.slug}
-                type="button"
-                onClick={() => setFilterAndGo({ neighborhood: n.slug }, 'properties')}
-                className="min-h-[36px] border-b border-transparent pb-0.5 text-sm font-medium text-white/80 underline-offset-4 transition-colors hover:border-gold hover:text-gold-soft"
-              >
-                {n.name}
-              </button>
-            ))}
-          </motion.div>
         </div>
-      </div>
-    </section>
-  )
-}
 
-/* ------------------------------------------------------------------ */
-/* STATS BAND — ink navy with gold serif numerals                      */
-/* ------------------------------------------------------------------ */
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.26, ease: EASE }}
+          className="mt-8 max-w-3xl"
+        >
+          <HeroSearchCard />
 
-function BandStat({ value, label, loading }: { value: string; label: string; loading?: boolean }) {
-  return (
-    <div className="flex min-w-[150px] flex-1 flex-col items-center gap-2 text-center">
-      {loading ? (
-        <span className="shimmer h-10 w-28 rounded-md" aria-hidden="true" />
-      ) : (
-        <span className="font-display text-3xl text-gold-soft md:text-4xl">{value}</span>
-      )}
-      <span className="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-white/55">
-        {label}
-      </span>
-    </div>
-  )
-}
-
-function StatsBand() {
-  const { properties, loading } = useProperties()
-  const { insights, neighborhoods, loading: hoodsLoading } = useInsights()
-
-  const portfolioBn = useMemo(() => {
-    const total = properties.reduce((sum, p) => sum + p.priceKes, 0)
-    return total > 0 ? (total / 1e9).toFixed(1) : null
-  }, [properties])
-
-  const dataMonths = insights?.neighborhoods[0]?.series.length ?? 0
-
-  return (
-    <section className="border-y border-gold/25 bg-ink py-10 dark:bg-[#0d1b30]" aria-label="Delima at a glance">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-start justify-center gap-x-8 gap-y-8 px-4 sm:px-6 md:gap-x-14 lg:px-8">
-        <BandStat
-          value={String(properties.length)}
-          label="Curated Residences"
-          loading={loading && properties.length === 0}
-        />
-        <BandStat
-          value={String(neighborhoods.length || 9)}
-          label="Signature Neighborhoods"
-          loading={hoodsLoading && neighborhoods.length === 0}
-        />
-        <BandStat
-          value={portfolioBn ? `KES ${portfolioBn}B+` : 'KES 2B+'}
-          label="Portfolio Under Our Care"
-          loading={loading && properties.length === 0}
-        />
-        <BandStat value={dataMonths ? `${dataMonths} Months` : '12 Months'} label="Of Market Data" />
-      </div>
-    </section>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/* FEATURED RESIDENCES                                                 */
-/* ------------------------------------------------------------------ */
-
-function FeaturedSection() {
-  const { properties, loading, error } = useProperties()
-  const setView = useAppStore(s => s.setView)
-  const featured = useMemo(() => properties.filter(p => p.featured), [properties])
-  const rowRef = useRef<HTMLDivElement>(null)
-
-  function scrollRow(dir: -1 | 1) {
-    rowRef.current?.scrollBy({ left: dir * 344, behavior: 'smooth' })
-  }
-
-  return (
-    <section className="py-16 md:py-24">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <FadeUp className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="eyebrow">Featured Properties</p>
-            <h2 className="gold-underline mt-3 font-display text-3xl md:text-4xl">
-              Handpicked homes worth discovering
-            </h2>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden gap-2 sm:flex">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => scrollRow(-1)}
-                aria-label="Scroll featured residences left"
-                className="size-11 rounded-full border-gold/40 text-gold-deep hover:bg-gold hover:text-[#1f1810] dark:text-gold dark:hover:text-[#17110b]"
-              >
-                <ChevronLeft className="size-5" aria-hidden="true" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => scrollRow(1)}
-                aria-label="Scroll featured residences right"
-                className="size-11 rounded-full border-gold/40 text-gold-deep hover:bg-gold hover:text-[#1f1810] dark:text-gold dark:hover:text-[#17110b]"
-              >
-                <ChevronRight className="size-5" aria-hidden="true" />
-              </Button>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => setView('properties')}
-              className="min-h-[44px] rounded-full border-espresso/25 dark:border-white/25"
-            >
-              View All Properties
-            </Button>
-          </div>
-        </FadeUp>
-
-        {error ? (
-          <FadeUp className="mt-10">
-            <ErrorRetryCard message={error} />
-          </FadeUp>
-        ) : loading ? (
-          <div className="mt-10 flex gap-5 overflow-hidden" aria-hidden="true">
-            {[0, 1, 2, 3, 4].map(i => (
-              <div key={i} className="shimmer h-44 w-[300px] shrink-0 rounded-xl sm:w-[340px]" />
-            ))}
-          </div>
-        ) : featured.length === 0 ? (
-          <p className="mt-10 text-sm text-muted-foreground">
-            New signature residences are being curated — check back shortly.
-          </p>
-        ) : (
-          <div
-            ref={rowRef}
-            className="delima-scroll -mx-4 mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0"
-          >
-            {featured.map(p => (
-              <div key={p.slug} className="w-[300px] shrink-0 snap-start sm:w-[340px]">
-                <PropertyMiniCard property={p} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/* LOCATIONS — image cards with classic badges + live counts           */
-/* ------------------------------------------------------------------ */
-
-function LocationsSection() {
-  const { insights, neighborhoods, loading, error } = useInsights()
-  const { properties } = useProperties()
-
-  const statBySlug = useMemo(() => {
-    const map = new Map<string, NeighborhoodStat>()
-    insights?.neighborhoods.forEach(n =>
-      map.set(n.slug, { latestYoY: n.latestYoY, avgPricePerSqm: n.avgPricePerSqm }),
-    )
-    return map
-  }, [insights])
-
-  const countBySlug = useMemo(() => {
-    const map = new Map<string, number>()
-    properties.forEach(p => map.set(p.neighborhoodSlug, (map.get(p.neighborhoodSlug) ?? 0) + 1))
-    return map
-  }, [properties])
-
-  return (
-    <section className="bg-sand/60 py-16 md:py-24 dark:bg-sand/30">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <FadeUp className="max-w-2xl">
-          <p className="eyebrow">Where we operate</p>
-          <h2 className="gold-underline mt-3 font-display text-3xl md:text-4xl">
-            Explore Nairobi&rsquo;s most sought-after addresses
-          </h2>
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            From the jacaranda lanes of Karen to the towers of Westlands — discover
-            prime neighbourhoods where your next chapter awaits, each with live
-            pricing and handpicked homes.
-          </p>
-        </FadeUp>
-
-        {error ? (
-          <FadeUp className="mt-10">
-            <ErrorRetryCard message={error} />
-          </FadeUp>
-        ) : loading ? (
-          <div className="mt-10 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 xl:grid-cols-4" aria-hidden="true">
-            {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
-              <div key={i} className="shimmer h-64 rounded-xl" />
-            ))}
-          </div>
-        ) : (
-          <FadeUp className="mt-10">
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 xl:grid-cols-4">
-              {neighborhoods.map(n => (
-                <NeighborhoodCard
-                  key={n.slug}
-                  neighborhood={n}
-                  stat={statBySlug.get(n.slug)}
-                  badge={HOOD_BADGES[n.slug]}
-                  count={countBySlug.get(n.slug)}
-                />
-              ))}
-            </div>
-          </FadeUp>
-        )}
-      </div>
-    </section>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/* WHY DELIMA — classic split: image left, checklist right             */
-/* ------------------------------------------------------------------ */
-
-function WhyDelimaSection() {
-  const setView = useAppStore(s => s.setView)
-
-  return (
-    <section className="py-16 md:py-24">
-      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
-        <FadeUp className="relative">
-          <div className="luxury-shadow overflow-hidden rounded-xl border">
-            <SmartImage
-              src={WHY_IMAGE}
-              alt="Keys handed over at a Delima residence"
-              fallbackLabel="Delima"
-              className="h-[420px] w-full"
-            />
-          </div>
-          {/* classic gold corner frame accent */}
-          <div
-            aria-hidden="true"
-            className="absolute -bottom-4 -right-4 -z-10 hidden h-40 w-40 rounded-xl border-2 border-gold/50 md:block"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute -left-4 -top-4 -z-10 hidden h-40 w-40 rounded-xl border-2 border-gold/50 md:block"
-          />
-        </FadeUp>
-
-        <div>
-          <FadeUp>
-            <p className="eyebrow">Why Delima</p>
-            <h2 className="gold-underline mt-3 font-display text-3xl md:text-4xl">
-              A partner you can trust with life&rsquo;s biggest decision
-            </h2>
-          </FadeUp>
-          <ul className="mt-8 space-y-6">
-            {VALUE_PROPS.map((v, i) => {
-              const Icon = v.icon
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {TRUST_CHIPS.map(chip => {
+              const Icon = chip.icon
               return (
-                <FadeUp key={v.title} delay={i * 0.08}>
-                  <li className="flex gap-4">
-                    <span className="gold-gradient-bg flex size-11 shrink-0 items-center justify-center rounded-full">
-                      <Check className="size-5 text-[#1f1810]" aria-hidden="true" />
-                    </span>
-                    <span>
-                      <span className="block font-display text-xl">{v.title}</span>
-                      <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
-                        {v.body}
-                      </span>
-                    </span>
-                  </li>
-                </FadeUp>
+                <span
+                  key={chip.label}
+                  className="inline-flex min-h-[36px] items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white backdrop-blur sm:text-sm"
+                >
+                  <Icon className="size-4 shrink-0 text-sun" aria-hidden="true" />
+                  {chip.label}
+                </span>
               )
             })}
-          </ul>
-          <FadeUp delay={0.3}>
-            <Button
-              variant="outline"
-              onClick={() => setView('agents')}
-              className="mt-9 min-h-[44px] rounded-full border-espresso/25 px-7 dark:border-white/25"
-            >
-              Meet the team
-            </Button>
-          </FadeUp>
-        </div>
-      </div>
+          </div>
+        </motion.div>
+      </Container>
     </section>
   )
 }
 
 /* ------------------------------------------------------------------ */
-/* AI CONCIERGE BAND                                                   */
+/* 2. STATS STRIP (overlaps hero bottom edge)                          */
+/* ------------------------------------------------------------------ */
+
+function StatsStrip() {
+  const { properties } = useProperties()
+  const { neighborhoods } = useInsights()
+
+  const agents = useMemo(
+    () => new Set(properties.map(p => p.agent.id)).size,
+    [properties],
+  )
+  const avgRating = useMemo(
+    () => (properties.length ? properties.reduce((s, p) => s + p.rating, 0) / properties.length : 0),
+    [properties],
+  )
+
+  return (
+    <Container className="relative z-20 -mt-10">
+      <Reveal>
+        <div className="card-modern soft-shadow grid grid-cols-2 gap-2 p-3 sm:p-4 lg:grid-cols-4 lg:gap-3">
+          <StatBlock
+            icon={Building2}
+            value={properties.length ? formatNumber(properties.length) : '60+'}
+            label="Live listings"
+          />
+          <StatBlock
+            icon={MapPin}
+            value={neighborhoods.length || 9}
+            label="Neighbourhoods"
+          />
+          <StatBlock
+            icon={Star}
+            value={avgRating ? avgRating.toFixed(1) : '4.9'}
+            label="Average rating"
+          />
+          <StatBlock icon={Users} value={agents || 6} label="Expert agents" />
+        </div>
+      </Reveal>
+    </Container>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* 3. FEATURED LISTINGS                                                */
+/* ------------------------------------------------------------------ */
+
+function FeaturedListings() {
+  const { properties, loading, error } = useProperties()
+  const setView = useAppStore(s => s.setView)
+
+  const featured = useMemo(
+    () => properties.filter(p => p.featured && p.status !== 'SOLD').slice(0, 6),
+    [properties],
+  )
+
+  return (
+    <Section tone="paper">
+      <SectionHeading
+        eyebrow="Featured"
+        title="Handpicked homes worth discovering"
+        description="A shortlist from our listing desk — each one title-checked, professionally photographed and priced against live market data."
+      />
+
+      {loading ? (
+        <div
+          aria-hidden="true"
+          className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {Array.from({ length: 6 }).map((_, i) => (
+            <PropertyCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : featured.length === 0 ? (
+        <EmptyState
+          icon={Home}
+          title={error ? 'We could not load listings' : 'Featured homes are being curated'}
+          description={
+            error ??
+            'Our listing desk is photographing new residences right now — browse the full collection in the meantime.'
+          }
+          className="bg-white"
+          action={
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => setView('properties')}
+              className="h-11 min-h-[44px] rounded-xl px-7 font-bold"
+            >
+              View all properties
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          <Reveal className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.map(p => (
+              <PropertyCard key={p.slug} property={p} />
+            ))}
+          </Reveal>
+
+          <Reveal delay={0.1} className="mt-10 text-center">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={() => setView('properties')}
+              className="h-11 min-h-[44px] rounded-xl border-line px-8 font-bold text-brand hover:bg-brand-soft"
+            >
+              View all properties
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Button>
+          </Reveal>
+        </>
+      )}
+    </Section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* 4. BUY / RENT SPLIT                                                 */
+/* ------------------------------------------------------------------ */
+
+function DealTypeCard({
+  image,
+  alt,
+  eyebrow,
+  title,
+  copy,
+  onClick,
+}: {
+  image: string
+  alt: string
+  eyebrow: string
+  title: string
+  copy: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative block h-72 w-full overflow-hidden rounded-3xl text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sun sm:h-96"
+    >
+      <Image
+        src={image}
+        alt={alt}
+        fill
+        sizes="(max-width: 768px) 100vw, 50vw"
+        className="object-cover transition-transform duration-700 group-hover:scale-105"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-gradient-to-t from-brand-deep/90 via-brand-deep/40 to-brand-deep/10 transition-opacity group-hover:opacity-95"
+      />
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-6 sm:p-8">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-sun">{eyebrow}</p>
+          <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+            {title}
+          </h3>
+          <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/80">{copy}</p>
+        </div>
+        <span
+          aria-hidden="true"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-sun text-brand-deep transition-transform duration-300 group-hover:translate-x-1.5"
+        >
+          <ArrowRight className="size-5" />
+        </span>
+      </div>
+    </button>
+  )
+}
+
+function BuyRentSplit() {
+  const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
+
+  return (
+    <Section tone="white">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
+        <Reveal className="h-full">
+          <DealTypeCard
+            image={BUY_IMAGE}
+            alt="Standalone family home with a manicured lawn"
+            eyebrow="For sale"
+            title="Buy a home"
+            copy="Villas, townhouses and land — every title vetted by our legal desk before it reaches your shortlist."
+            onClick={() => setFilterAndGo({ status: 'FOR_SALE' }, 'properties')}
+          />
+        </Reveal>
+        <Reveal delay={0.08} className="h-full">
+          <DealTypeCard
+            image={RENT_IMAGE}
+            alt="Bright modern apartment living room"
+            eyebrow="For rent"
+            title="Rent a home"
+            copy="Furnished and long-let apartments in the city's best-connected neighbourhoods — move-in ready."
+            onClick={() => setFilterAndGo({ status: 'FOR_RENT' }, 'properties')}
+          />
+        </Reveal>
+      </div>
+    </Section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* 6. WHY DELIMA                                                       */
+/* ------------------------------------------------------------------ */
+
+const WHY_POINTS = [
+  {
+    icon: ShieldCheck,
+    title: 'Verified, title-checked listings',
+    body: 'Every home on Delima is vetted by our legal desk — clean titles, verified owners and honest photos before it reaches your shortlist.',
+  },
+  {
+    icon: Handshake,
+    title: 'End-to-end, in one place',
+    body: 'Search, viewings, negotiation, lawyers and handover — one dedicated team coordinates the entire journey from first click to final key.',
+  },
+  {
+    icon: LineChart,
+    title: 'Honest market guidance',
+    body: 'We price from real Nairobi transaction data across nine micro-markets, so your offer is grounded in facts — never portal hype.',
+  },
+  {
+    icon: Sparkles,
+    title: 'AI-powered concierge',
+    body: 'Describe your dream home in plain words and get a curated shortlist in seconds — answers day or night, even at 2am.',
+  },
+] as const
+
+function WhyDelima() {
+  return (
+    <Section tone="white">
+      <SectionHeading
+        eyebrow="Why Delima"
+        title="A realtor that does the heavy lifting"
+        description="Four reasons families, investors and businesses across Nairobi start their property journey with us."
+      />
+
+      <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {WHY_POINTS.map((point, i) => {
+          const Icon = point.icon
+          return (
+            <Reveal key={point.title} delay={i * 0.06} className="h-full">
+              <div className="card-modern h-full p-6">
+                <span
+                  className={cn(
+                    'flex size-12 items-center justify-center rounded-2xl',
+                    i % 2 === 1 ? 'bg-sun-soft text-sun-deep' : 'bg-brand-soft text-brand',
+                  )}
+                >
+                  <Icon className="size-6" aria-hidden="true" />
+                </span>
+                <h3 className="mt-5 text-lg font-bold leading-snug text-ink">{point.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{point.body}</p>
+              </div>
+            </Reveal>
+          )
+        })}
+      </div>
+    </Section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* 8. AI CONCIERGE BAND                                                */
 /* ------------------------------------------------------------------ */
 
 function AIConciergeBand() {
   const setAssistantOpen = useAppStore(s => s.setAssistantOpen)
 
   return (
-    <section className="border-y border-gold/20 bg-espresso dark:bg-espresso-soft">
-      <div className="mx-auto flex max-w-7xl flex-col items-start gap-8 px-4 py-14 sm:px-6 md:flex-row md:items-center md:justify-between md:py-16 lg:px-8">
-        <FadeUp>
-          <p className="text-xs font-bold uppercase tracking-[0.28em] text-gold-soft">
-            Delima AI · Always On
-          </p>
-          <h2 className="mt-3 font-display text-3xl text-[#f0e9dc] md:text-4xl">
-            Meet your AI property concierge
-          </h2>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#f0e9dc]/70">
-            &ldquo;A four-bedroom villa in Karen under 60 million, with a pool&rdquo; — say it in
-            plain words and watch curated matches appear in seconds.
-          </p>
-        </FadeUp>
-        <FadeUp delay={0.1} className="shrink-0">
-          <Button
-            onClick={() => setAssistantOpen(true)}
-            className="gold-gradient-bg min-h-[48px] px-7 font-semibold text-[#1f1810] hover:opacity-90"
-          >
-            <Sparkles className="size-4" aria-hidden="true" /> Ask Delima AI
-          </Button>
-        </FadeUp>
-      </div>
-    </section>
+    <Section tone="paper">
+      <Reveal>
+        <div className="relative overflow-hidden rounded-3xl bg-brand px-6 py-12 sm:px-10 sm:py-16">
+          <div aria-hidden="true" className="absolute -right-24 -top-24 size-80 rounded-full bg-sun/15 blur-3xl" />
+          <div aria-hidden="true" className="absolute -bottom-32 -left-16 size-80 rounded-full bg-brand-mid/60 blur-3xl" />
+
+          <div className="relative flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-2xl">
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-sun/20 text-sun">
+                <Sparkles className="size-6" aria-hidden="true" />
+              </span>
+              <h2 className="mt-5 text-2xl font-extrabold tracking-tight text-white sm:text-4xl">
+                Meet Delima AI, your 24/7 property concierge
+              </h2>
+              <p className="mt-3 text-base leading-relaxed text-white/75">
+                &ldquo;A four-bedroom villa in Karen under KES 60 million, with a pool&rdquo; &mdash;
+                describe what you need in plain words and watch a curated, title-checked shortlist
+                appear in seconds.
+              </p>
+            </div>
+
+            <div className="shrink-0">
+              <button
+                type="button"
+                onClick={() => setAssistantOpen(true)}
+                className="btn-sun inline-flex h-12 min-h-[48px] items-center gap-2 rounded-xl px-7 text-base font-bold"
+              >
+                Ask Delima AI
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </Reveal>
+    </Section>
   )
 }
 
 /* ------------------------------------------------------------------ */
-/* CTA BAND — classic gold plaque before the footer                    */
+/* 9. CLOSING CTA BANNER                                               */
 /* ------------------------------------------------------------------ */
 
-function CtaBand() {
+function ClosingCta() {
   const setView = useAppStore(s => s.setView)
 
   return (
-    <section className="gold-gradient-bg" aria-labelledby="cta-heading">
-      <div className="mx-auto flex max-w-7xl flex-col items-start gap-8 px-4 py-14 sm:px-6 md:flex-row md:items-center md:justify-between md:py-16 lg:px-8">
-        <FadeUp>
-          <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#5c4a10]">
-            Ready to take the next step?
-          </p>
-          <h2 id="cta-heading" className="mt-3 max-w-xl font-display text-3xl text-[#2a2110] md:text-4xl">
-            Let&rsquo;s help you find a place you&rsquo;ll love to call home
-          </h2>
-          <p className="mt-3 max-w-lg text-sm leading-relaxed text-[#2a2110]/75">
-            Speak to a specialist today — verified titles, off-market access, and
-            honest guidance from the first call to the final signature.
-          </p>
-        </FadeUp>
-        <FadeUp delay={0.1} className="flex shrink-0 flex-col gap-3 sm:flex-row md:flex-col lg:flex-row">
+    <Section tone="white">
+      <Reveal className="mx-auto max-w-2xl text-center">
+        <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-brand">
+          <Home className="size-7" aria-hidden="true" />
+        </span>
+        <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
+          Let&rsquo;s help you find a place you&rsquo;ll love to call home.
+        </h2>
+        <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+          Talk to a Delima agent today — honest advice, zero pressure, and a shortlist within 24
+          hours.
+        </p>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button
-            variant="outline"
-            asChild
-            className="min-h-[48px] rounded-full border-[#2a2110]/40 bg-transparent px-7 text-[#2a2110] hover:bg-[#2a2110] hover:text-gold-soft"
+            type="button"
+            size="lg"
+            onClick={() => setView('properties')}
+            className="h-12 min-h-[44px] rounded-xl px-8 text-base font-bold"
           >
-            <a href="tel:+254727523752" aria-label="Call Delima Realtors on +254 727 523 752">
-              <Phone className="size-4" aria-hidden="true" /> +254 727 523 752
+            Explore properties
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="h-12 min-h-[44px] rounded-xl border-line px-8 text-base font-bold text-brand hover:bg-brand-soft"
+          >
+            <a href={`tel:${SUPPORT_PHONE}`}>
+              <Phone className="size-4" aria-hidden="true" />
+              Call {SUPPORT_PHONE_LABEL}
             </a>
           </Button>
-          <Button
-            onClick={() => setView('properties')}
-            className="min-h-[48px] rounded-full bg-espresso px-7 font-semibold text-gold-soft hover:bg-black"
-          >
-            Browse Properties
-          </Button>
-        </FadeUp>
-      </div>
-    </section>
+        </div>
+      </Reveal>
+    </Section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* HomeView                                                            */
+/* ------------------------------------------------------------------ */
+
+export default function HomeView() {
+  const { neighborhoods, loading: hoodsLoading } = useInsights()
+  const { properties } = useProperties()
+  const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
+
+  // Live listing counts per neighbourhood slug for the atlas cards.
+  const countsBySlug = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const p of properties) {
+      map[p.neighborhoodSlug] = (map[p.neighborhoodSlug] ?? 0) + 1
+    }
+    return map
+  }, [properties])
+
+  return (
+    <div className="flex flex-col">
+      <Hero />
+      <StatsStrip />
+      <FeaturedListings />
+      <BuyRentSplit />
+      <NeighborhoodGuide
+        neighborhoods={neighborhoods}
+        countsBySlug={countsBySlug}
+        loading={hoodsLoading}
+        onExplore={slug => setFilterAndGo({ neighborhood: slug }, 'properties')}
+      />
+      <WhyDelima />
+      <Testimonials />
+      <AIConciergeBand />
+      <ClosingCta />
+    </div>
   )
 }

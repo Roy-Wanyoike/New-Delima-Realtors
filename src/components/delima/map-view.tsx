@@ -1,14 +1,17 @@
-// Delima Realtors Platform 2.0 — Map Search (issue #54)
+// Delima Realtors 3.0 — Map Search
 // Bespoke SVG map of Nairobi — fully self-drawn, no external tiles or services.
+// All geometry, zoom/pan, clustering and hover-sync logic preserved verbatim;
+// only the chrome (toolbar, list, colors) was modernized to the 3.0 tokens and
+// a neighborhood filter was added to the toolbar.
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { AlertTriangle, Home, Maximize, Minus, Plus, RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Container, EmptyState, Reveal } from '@/components/delima/ui-kit'
 import { filterProperties, useInsights, useProperties } from '@/hooks/use-delima-data'
 import { useAppStore } from '@/lib/store'
 import { formatKes, formatPriceForStatus, statusLabel, typeLabel } from '@/lib/format'
@@ -107,7 +110,7 @@ function Thumb({ src, alt, className }: { src?: string; alt: string; className?:
   const [err, setErr] = useState(false)
   if (!src || err) {
     return (
-      <div className={cn('gold-gradient-bg flex shrink-0 items-center justify-center text-espresso', className)} aria-hidden="true">
+      <div className={cn('flex shrink-0 items-center justify-center bg-brand-soft text-brand', className)} aria-hidden="true">
         <Home className="size-4" />
       </div>
     )
@@ -145,13 +148,13 @@ function PropertyPin({
       onMouseLeave={() => onHover(null)}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      {hovered && <circle r={11} className="delima-pin-pulse" fill="var(--gold)" />}
-      <circle r={hovered ? 8.5 : 6.5} fill="url(#delima-pin-gold)" stroke="var(--espresso)" strokeWidth={hovered ? 2 : 1.4} className="transition-all duration-200" />
+      {hovered && <circle r={11} className="delima-pin-pulse" fill="var(--sun)" />}
+      <circle r={hovered ? 8.5 : 6.5} fill="url(#delima-pin-sun)" stroke="var(--brand-deep)" strokeWidth={hovered ? 2 : 1.4} className="transition-all duration-200" />
       <circle r={15} fill="transparent" />
       {showLabel && (
         <text
           y={-13} textAnchor="middle" fontSize={10.5} fontWeight={700}
-          fill="var(--gold-deep)" stroke="var(--background)" strokeWidth={3} paintOrder="stroke"
+          fill="var(--sun-deep)" stroke="var(--paper)" strokeWidth={3} paintOrder="stroke"
           className="pointer-events-none select-none"
         >
           {formatKes(p.priceKes, { compact: true })}
@@ -185,12 +188,12 @@ function ClusterPin({
       onMouseLeave={() => onHover(null)}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      {active && <circle r={20} className="delima-pin-pulse" fill="var(--gold)" />}
-      <circle r={active ? 18 : 15} fill="url(#delima-pin-gold)" stroke="var(--espresso)" strokeWidth={1.6} className="transition-all duration-200" />
-      <text y={4.5} textAnchor="middle" fontSize={13} fontWeight={800} fill="#1f1810" className="pointer-events-none select-none">{count}</text>
+      {active && <circle r={20} className="delima-pin-pulse" fill="var(--sun)" />}
+      <circle r={active ? 18 : 15} fill="url(#delima-pin-sun)" stroke="var(--brand-deep)" strokeWidth={1.6} className="transition-all duration-200" />
+      <text y={4.5} textAnchor="middle" fontSize={13} fontWeight={800} fill="var(--brand-deep)" className="pointer-events-none select-none">{count}</text>
       <text
         y={30} textAnchor="middle" fontSize={10} fontWeight={700} letterSpacing={1.4}
-        fill="var(--foreground)" fillOpacity={0.85} stroke="var(--background)" strokeWidth={3} paintOrder="stroke"
+        fill="var(--foreground)" fillOpacity={0.85} stroke="var(--paper)" strokeWidth={3} paintOrder="stroke"
         className="pointer-events-none select-none uppercase"
       >
         {nb.name}
@@ -233,6 +236,11 @@ function MapContent({ onRetry }: { onRetry: () => void }) {
     filtered.forEach((p) => counts.set(p.neighborhoodSlug, (counts.get(p.neighborhoodSlug) ?? 0) + 1))
     return counts
   }, [filtered])
+
+  const nbOptions = useMemo(
+    () => [...neighborhoods].sort((a, b) => a.name.localeCompare(b.name)),
+    [neighborhoods],
+  )
 
   // Price→fill-opacity mapper (plain derivation, cheap for 9 neighborhoods)
   const priceOpacity = (v: number) => {
@@ -308,13 +316,13 @@ function MapContent({ onRetry }: { onRetry: () => void }) {
 
   if (loading || nbLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-14 w-full rounded-xl" />
+      <div className="space-y-4" aria-busy="true" aria-label="Loading map">
+        <Skeleton className="h-20 w-full rounded-2xl" />
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
           <Skeleton className="h-[50vh] w-full rounded-2xl lg:h-[640px]" />
           <div className="space-y-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-[72px] w-full rounded-xl" />
+              <Skeleton key={i} className="shimmer h-[72px] w-full rounded-xl" />
             ))}
           </div>
         </div>
@@ -324,20 +332,17 @@ function MapContent({ onRetry }: { onRetry: () => void }) {
 
   if (error || nbError) {
     return (
-      <Card className="mx-auto max-w-lg border-gold/30 luxury-shadow">
-        <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
-          <span className="flex size-14 items-center justify-center rounded-full bg-gold/15 text-gold-deep dark:text-gold">
-            <AlertTriangle className="size-7" />
-          </span>
-          <div>
-            <h3 className="font-display text-xl">The map couldn&apos;t load</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{error ?? nbError}</p>
-          </div>
-          <Button onClick={onRetry} className="h-11 min-w-[140px] gold-gradient-bg border-0 text-espresso hover:opacity-90">
-            <RotateCcw className="size-4" /> Try again
+      <EmptyState
+        icon={AlertTriangle}
+        title="The map couldn't load"
+        description={error ?? nbError ?? undefined}
+        action={
+          <Button onClick={onRetry} className="rounded-full">
+            <RotateCcw className="size-4" aria-hidden="true" /> Try again
           </Button>
-        </CardContent>
-      </Card>
+        }
+        className="mx-auto max-w-lg"
+      />
     )
   }
 
@@ -361,364 +366,384 @@ function MapContent({ onRetry }: { onRetry: () => void }) {
       `}</style>
 
       {/* ---------------- top bar: quick filters ---------------- */}
-      <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 luxury-shadow md:p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={filters.type} onValueChange={(v) => setFilters({ type: v as PropertyType | 'ALL' })}>
-            <SelectTrigger aria-label="Filter by property type" className="h-11 w-[150px]">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All types</SelectItem>
-              {PROPERTY_TYPES.map((ty) => (
-                <SelectItem key={ty} value={ty}>{typeLabel[ty]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <Reveal>
+        <div className="rounded-2xl border border-line bg-white p-3 soft-shadow sm:p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={filters.neighborhood} onValueChange={(v) => setFilters({ neighborhood: v })}>
+              <SelectTrigger aria-label="Filter by neighborhood" className="h-11 w-[160px] rounded-xl">
+                <SelectValue placeholder="Neighborhood" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All areas</SelectItem>
+                {nbOptions.map((n) => (
+                  <SelectItem key={n.slug} value={n.slug}>{n.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={filters.status} onValueChange={(v) => setFilters({ status: v as PropertyStatus | 'ALL' })}>
-            <SelectTrigger aria-label="Filter by listing status" className="h-11 w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All statuses</SelectItem>
-              {PROPERTY_STATUSES.map((st) => (
-                <SelectItem key={st} value={st}>{statusLabel[st]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={filters.type} onValueChange={(v) => setFilters({ type: v as PropertyType | 'ALL' })}>
+              <SelectTrigger aria-label="Filter by property type" className="h-11 w-[140px] rounded-xl">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All types</SelectItem>
+                {PROPERTY_TYPES.map((ty) => (
+                  <SelectItem key={ty} value={ty}>{typeLabel[ty]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select
-            value={filters.maxPrice != null ? String(filters.maxPrice) : 'ANY'}
-            onValueChange={(v) => setFilters({ maxPrice: v === 'ANY' ? null : Number(v) })}
-          >
-            <SelectTrigger aria-label="Filter by maximum price" className="h-11 w-[150px]">
-              <SelectValue placeholder="Max price" />
-            </SelectTrigger>
-            <SelectContent>
-              {MAX_PRICE_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={filters.status} onValueChange={(v) => setFilters({ status: v as PropertyStatus | 'ALL' })}>
+              <SelectTrigger aria-label="Filter by listing status" className="h-11 w-[150px] rounded-xl">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All statuses</SelectItem>
+                {PROPERTY_STATUSES.map((st) => (
+                  <SelectItem key={st} value={st}>{statusLabel[st]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Button
-            variant="outline"
-            onClick={resetFilters}
-            aria-label="Reset all filters"
-            className="h-11 border-gold/40 hover:bg-gold/10 hover:text-gold-deep dark:hover:text-gold"
-          >
-            <RotateCcw className="size-4" /> Reset
-          </Button>
+            <Select
+              value={filters.maxPrice != null ? String(filters.maxPrice) : 'ANY'}
+              onValueChange={(v) => setFilters({ maxPrice: v === 'ANY' ? null : Number(v) })}
+            >
+              <SelectTrigger aria-label="Filter by maximum price" className="h-11 w-[140px] rounded-xl">
+                <SelectValue placeholder="Max price" />
+              </SelectTrigger>
+              <SelectContent>
+                {MAX_PRICE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Badge variant="secondary" className="ml-auto h-9 px-3 text-xs font-semibold">
-            {filtered.length} {filtered.length === 1 ? 'listing' : 'listings'}
-          </Badge>
-        </div>
+            <Button
+              variant="outline"
+              onClick={resetFilters}
+              aria-label="Reset all filters"
+              className="h-11 rounded-xl border-line hover:bg-brand-soft hover:text-brand"
+            >
+              <RotateCcw className="size-4" aria-hidden="true" /> Reset
+            </Button>
 
-        {/* legend */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t pt-2.5">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Avg KES / sqm</span>
-          <div className="flex items-center gap-2">
-            {PRICE_BANDS.map((b) => (
-              <span key={b.label} className="flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className="inline-block size-3.5 rounded-[3px] border border-gold/50"
-                  style={{ backgroundColor: 'var(--gold)', opacity: b.opacity }}
-                />
-                <span className="text-[11px] text-muted-foreground">{b.label}</span>
-              </span>
-            ))}
+            <Badge className="ml-auto h-9 rounded-full bg-brand-soft px-3.5 text-xs font-bold text-brand">
+              {filtered.length} {filtered.length === 1 ? 'listing' : 'listings'}
+            </Badge>
           </div>
-          <span className="ml-auto hidden text-[11px] text-muted-foreground sm:block">
-            Drag to pan · Click a cluster to zoom · Pins show prices from {CLUSTER_K + 0.1}× zoom
-          </span>
+
+          {/* legend */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line pt-2.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Avg KES / sqm</span>
+            <div className="flex items-center gap-2">
+              {PRICE_BANDS.map((b) => (
+                <span key={b.label} className="flex items-center gap-1.5">
+                  <span
+                    aria-hidden="true"
+                    className="inline-block size-3.5 rounded-[3px] border border-sun/50"
+                    style={{ backgroundColor: 'var(--sun)', opacity: b.opacity }}
+                  />
+                  <span className="text-[11px] text-muted-foreground">{b.label}</span>
+                </span>
+              ))}
+            </div>
+            <span className="ml-auto hidden text-[11px] text-muted-foreground sm:block">
+              Drag to pan · Click a cluster to zoom · Pins show prices from {CLUSTER_K + 0.1}× zoom
+            </span>
+          </div>
         </div>
-      </div>
+      </Reveal>
 
       {/* ---------------- map + list ---------------- */}
-      <div className="flex flex-col gap-6 lg:flex-row">
-        {/* map */}
-        <div className="relative min-w-0 flex-1">
-          <div
-            className={cn(
-              'relative h-[50vh] w-full overflow-hidden rounded-2xl border bg-sand luxury-shadow lg:h-[640px]',
-              dragging ? 'map-grabbing' : t.k > 1 ? 'map-grab' : '',
-            )}
-          >
-            <svg
-              ref={svgRef}
-              viewBox={`0 0 ${W} ${H}`}
-              preserveAspectRatio="xMidYMid meet"
-              className="h-full w-full touch-none"
-              role="application"
-              aria-label="Interactive map of Nairobi neighborhoods and listings. Use the zoom buttons to explore."
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-              onPointerLeave={endDrag}
+      <Reveal delay={0.06}>
+        <div className="flex flex-col gap-6 lg:flex-row">
+          {/* map */}
+          <div className="relative min-w-0 flex-1">
+            <div
+              className={cn(
+                'relative h-[50vh] w-full overflow-hidden rounded-2xl border border-line bg-paper soft-shadow lg:h-[640px]',
+                dragging ? 'map-grabbing' : t.k > 1 ? 'map-grab' : '',
+              )}
             >
-              <defs>
-                <radialGradient id="delima-pin-gold" cx="35%" cy="30%" r="75%">
-                  <stop offset="0%" stopColor="#f1e3a3" />
-                  <stop offset="55%" stopColor="#d4af37" />
-                  <stop offset="100%" stopColor="#a3820f" />
-                </radialGradient>
-              </defs>
+              <svg
+                ref={svgRef}
+                viewBox={`0 0 ${W} ${H}`}
+                preserveAspectRatio="xMidYMid meet"
+                className="h-full w-full touch-none"
+                role="application"
+                aria-label="Interactive map of Nairobi neighborhoods and listings. Use the zoom buttons to explore."
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                onPointerLeave={endDrag}
+              >
+                <defs>
+                  <radialGradient id="delima-pin-sun" cx="35%" cy="30%" r="75%">
+                    <stop offset="0%" stopColor="#f6c468" />
+                    <stop offset="55%" stopColor="#e8a33d" />
+                    <stop offset="100%" stopColor="#b97c17" />
+                  </radialGradient>
+                </defs>
 
-              <g transform={`translate(${t.x},${t.y}) scale(${t.k})`}>
-                {/* base */}
-                <rect x={0} y={0} width={W} height={H} fill="var(--sand)" />
+                <g transform={`translate(${t.x},${t.y}) scale(${t.k})`}>
+                  {/* base */}
+                  <rect x={0} y={0} width={W} height={H} fill="var(--paper)" />
 
-                {/* faint survey grid */}
-                <g className="pointer-events-none select-none">
-                  {Array.from({ length: 7 }).map((_, i) => (
-                    <line key={`v${i}`} x1={(i + 1) * 100} y1={0} x2={(i + 1) * 100} y2={H} stroke="var(--border)" strokeWidth={0.6} opacity={0.55} vectorEffect="non-scaling-stroke" />
-                  ))}
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <line key={`h${i}`} x1={0} y1={(i + 1) * 100} x2={W} y2={(i + 1) * 100} stroke="var(--border)" strokeWidth={0.6} opacity={0.55} vectorEffect="non-scaling-stroke" />
-                  ))}
-                </g>
+                  {/* faint survey grid */}
+                  <g className="pointer-events-none select-none">
+                    {Array.from({ length: 7 }).map((_, i) => (
+                      <line key={`v${i}`} x1={(i + 1) * 100} y1={0} x2={(i + 1) * 100} y2={H} stroke="var(--line)" strokeWidth={0.6} opacity={0.8} vectorEffect="non-scaling-stroke" />
+                    ))}
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <line key={`h${i}`} x1={0} y1={(i + 1) * 100} x2={W} y2={(i + 1) * 100} stroke="var(--line)" strokeWidth={0.6} opacity={0.8} vectorEffect="non-scaling-stroke" />
+                    ))}
+                  </g>
 
-                {/* green spaces — olive/clay tones (no blue) */}
-                {PARKS.map((park) => (
-                  <polygon
-                    key={park.name}
-                    points={park.poly.map(([la, ln]) => `${px(ln)},${py(la)}`).join(' ')}
-                    fill="var(--clay)"
-                    fillOpacity={0.22}
-                    stroke="var(--clay)"
-                    strokeOpacity={0.35}
-                    strokeWidth={1}
-                    vectorEffect="non-scaling-stroke"
-                    className="pointer-events-none"
-                  >
-                    <title>{park.name}</title>
-                  </polygon>
-                ))}
-
-                {/* Nairobi River — clay tone */}
-                <polyline
-                  points={RIVER.map(([la, ln]) => `${px(ln)},${py(la)}`).join(' ')}
-                  fill="none" stroke="var(--clay)" strokeOpacity={0.6} strokeWidth={1.6}
-                  vectorEffect="non-scaling-stroke" className="pointer-events-none"
-                />
-
-                {/* roads */}
-                <g className="pointer-events-none select-none" fill="none">
-                  {ROADS.map((d, i) => (
-                    <path key={i} d={d} stroke="var(--border)" strokeWidth={i < 3 ? 2.4 : 1.8} strokeOpacity={0.9} vectorEffect="non-scaling-stroke" />
-                  ))}
-                  <path d={ROADS[0]} stroke="var(--gold)" strokeOpacity={0.4} strokeWidth={1.2} strokeDasharray="7 7" vectorEffect="non-scaling-stroke" />
-                  <path d={ROADS[1]} stroke="var(--gold)" strokeOpacity={0.4} strokeWidth={1.2} strokeDasharray="7 7" vectorEffect="non-scaling-stroke" />
-                  {ROAD_LABELS.map((rl) => (
-                    <text
-                      key={rl.text} x={rl.x} y={rl.y} fontSize={8.5} letterSpacing={1.1} fill="var(--muted-foreground)"
-                      fillOpacity={0.85} stroke="var(--sand)" strokeWidth={2.5} paintOrder="stroke" className="uppercase"
+                  {/* green spaces — evergreen tones */}
+                  {PARKS.map((park) => (
+                    <polygon
+                      key={park.name}
+                      points={park.poly.map(([la, ln]) => `${px(ln)},${py(la)}`).join(' ')}
+                      fill="var(--brand-soft)"
+                      fillOpacity={0.85}
+                      stroke="var(--brand-mid)"
+                      strokeOpacity={0.3}
+                      strokeWidth={1}
+                      vectorEffect="non-scaling-stroke"
+                      className="pointer-events-none"
                     >
-                      {rl.text}
+                      <title>{park.name}</title>
+                    </polygon>
+                  ))}
+
+                  {/* Nairobi River — sage tone */}
+                  <polyline
+                    points={RIVER.map(([la, ln]) => `${px(ln)},${py(la)}`).join(' ')}
+                    fill="none" stroke="var(--chart-4)" strokeOpacity={0.8} strokeWidth={1.8}
+                    vectorEffect="non-scaling-stroke" className="pointer-events-none"
+                  />
+
+                  {/* roads */}
+                  <g className="pointer-events-none select-none" fill="none">
+                    {ROADS.map((d, i) => (
+                      <path key={i} d={d} stroke="var(--input)" strokeWidth={i < 3 ? 2.4 : 1.8} strokeOpacity={0.95} vectorEffect="non-scaling-stroke" />
+                    ))}
+                    <path d={ROADS[0]} stroke="var(--sun)" strokeOpacity={0.55} strokeWidth={1.2} strokeDasharray="7 7" vectorEffect="non-scaling-stroke" />
+                    <path d={ROADS[1]} stroke="var(--sun)" strokeOpacity={0.55} strokeWidth={1.2} strokeDasharray="7 7" vectorEffect="non-scaling-stroke" />
+                    {ROAD_LABELS.map((rl) => (
+                      <text
+                        key={rl.text} x={rl.x} y={rl.y} fontSize={8.5} letterSpacing={1.1} fill="var(--muted-foreground)"
+                        fillOpacity={0.9} stroke="var(--paper)" strokeWidth={2.5} paintOrder="stroke" className="uppercase"
+                      >
+                        {rl.text}
+                      </text>
+                    ))}
+                  </g>
+
+                  {/* neighborhood polygons — sun fill opacity scales with price quartile */}
+                  {neighborhoods.map((nb) => {
+                    const isTarget = filters.neighborhood === nb.slug
+                    const isHot = hoveredNb === nb.slug || hoveredProp?.neighborhoodSlug === nb.slug
+                    return (
+                      <g key={nb.slug} onMouseEnter={() => setHoveredNb(nb.slug)} onMouseLeave={() => setHoveredNb(null)}>
+                        <title>{`${nb.name} — avg ${formatKes(nb.avgPricePerSqm)} / sqm`}</title>
+                        <polygon
+                          points={nb.polygon.map(([la, ln]) => `${px(ln)},${py(la)}`).join(' ')}
+                          fill="var(--sun)"
+                          fillOpacity={priceOpacity(nb.avgPricePerSqm) + (isHot ? 0.14 : 0) + (isTarget ? 0.08 : 0)}
+                          stroke={isTarget ? 'var(--sun-deep)' : 'var(--sun)'}
+                          strokeOpacity={isTarget ? 0.95 : 0.55}
+                          strokeWidth={isTarget ? 2 : 1.3}
+                          strokeDasharray={isTarget ? '5 4' : undefined}
+                          vectorEffect="non-scaling-stroke"
+                          className="transition-[fill-opacity] duration-300"
+                        />
+                      </g>
+                    )
+                  })}
+
+                  {/* neighborhood labels (pin mode — clusters render their own) */}
+                  {pinMode && neighborhoods.map((nb) => (
+                    <text
+                      key={nb.slug} x={px(nb.lng)} y={py(nb.lat) + 27} textAnchor="middle"
+                      fontSize={10} letterSpacing={1.6} fontWeight={600}
+                      fill="var(--muted-foreground)" fillOpacity={0.9}
+                      stroke="var(--paper)" strokeWidth={3} paintOrder="stroke"
+                      className="pointer-events-none select-none uppercase"
+                    >
+                      {nb.name}
                     </text>
                   ))}
-                </g>
 
-                {/* neighborhood polygons — gold fill opacity scales with price quartile */}
-                {neighborhoods.map((nb) => {
-                  const isTarget = filters.neighborhood === nb.slug
-                  const isHot = hoveredNb === nb.slug || hoveredProp?.neighborhoodSlug === nb.slug
-                  return (
-                    <g key={nb.slug} onMouseEnter={() => setHoveredNb(nb.slug)} onMouseLeave={() => setHoveredNb(null)}>
-                      <title>{`${nb.name} — avg ${formatKes(nb.avgPricePerSqm)} / sqm`}</title>
-                      <polygon
-                        points={nb.polygon.map(([la, ln]) => `${px(ln)},${py(la)}`).join(' ')}
-                        fill="var(--gold)"
-                        fillOpacity={priceOpacity(nb.avgPricePerSqm) + (isHot ? 0.14 : 0) + (isTarget ? 0.08 : 0)}
-                        stroke={isTarget ? 'var(--gold-deep)' : 'var(--gold)'}
-                        strokeOpacity={isTarget ? 0.95 : 0.55}
-                        strokeWidth={isTarget ? 2 : 1.3}
-                        strokeDasharray={isTarget ? '5 4' : undefined}
-                        vectorEffect="non-scaling-stroke"
-                        className="transition-[fill-opacity] duration-300"
-                      />
-                    </g>
-                  )
-                })}
+                  {/* Nairobi CBD — landmark marker */}
+                  <g transform={`translate(${px(36.8172)},${py(-1.2864)})`} className="pointer-events-none select-none">
+                    <path d="M -11 -4 L 0 -13 L 11 -4 Z" fill="var(--sun-deep)" />
+                    <rect x={-9.5} y={-3} width={19} height={2.6} fill="var(--sun-deep)" />
+                    <rect x={-8.5} y={0.6} width={2.8} height={9} fill="var(--sun-deep)" />
+                    <rect x={-4.4} y={0.6} width={2.8} height={9} fill="var(--sun-deep)" />
+                    <rect x={-0.3} y={0.6} width={2.8} height={9} fill="var(--sun-deep)" />
+                    <rect x={3.8} y={0.6} width={2.8} height={9} fill="var(--sun-deep)" />
+                    <rect x={-11} y={10.6} width={22} height={2.6} fill="var(--sun-deep)" />
+                    <text
+                      y={26} textAnchor="middle" fontSize={9.5} fontWeight={700} letterSpacing={1.8}
+                      fill="var(--foreground)" fillOpacity={0.75} stroke="var(--paper)" strokeWidth={3} paintOrder="stroke" className="uppercase"
+                    >
+                      Nairobi CBD
+                    </text>
+                  </g>
 
-                {/* neighborhood labels (pin mode — clusters render their own) */}
-                {pinMode && neighborhoods.map((nb) => (
-                  <text
-                    key={nb.slug} x={px(nb.lng)} y={py(nb.lat) + 27} textAnchor="middle"
-                    fontSize={10} letterSpacing={1.6} fontWeight={600}
-                    fill="var(--foreground)" fillOpacity={0.6}
-                    stroke="var(--sand)" strokeWidth={3} paintOrder="stroke"
-                    className="pointer-events-none select-none uppercase"
-                  >
-                    {nb.name}
-                  </text>
-                ))}
-
-                {/* Nairobi CBD — landmark marker */}
-                <g transform={`translate(${px(36.8172)},${py(-1.2864)})`} className="pointer-events-none select-none">
-                  <path d="M -11 -4 L 0 -13 L 11 -4 Z" fill="var(--gold-deep)" />
-                  <rect x={-9.5} y={-3} width={19} height={2.6} fill="var(--gold-deep)" />
-                  <rect x={-8.5} y={0.6} width={2.8} height={9} fill="var(--gold-deep)" />
-                  <rect x={-4.4} y={0.6} width={2.8} height={9} fill="var(--gold-deep)" />
-                  <rect x={-0.3} y={0.6} width={2.8} height={9} fill="var(--gold-deep)" />
-                  <rect x={3.8} y={0.6} width={2.8} height={9} fill="var(--gold-deep)" />
-                  <rect x={-11} y={10.6} width={22} height={2.6} fill="var(--gold-deep)" />
-                  <text
-                    y={26} textAnchor="middle" fontSize={9.5} fontWeight={700} letterSpacing={1.8}
-                    fill="var(--foreground)" fillOpacity={0.75} stroke="var(--sand)" strokeWidth={3} paintOrder="stroke" className="uppercase"
-                  >
-                    Nairobi CBD
-                  </text>
-                </g>
-
-                {/* pins / clusters */}
-                {pinMode
-                  ? filtered.map((p) => (
-                      <PropertyPin
-                        key={p.slug}
-                        p={p}
-                        x={px(p.lng)}
-                        y={py(p.lat)}
-                        hovered={hoveredSlug === p.slug}
-                        showLabel
-                        onSelect={() => openProperty(p.slug)}
-                        onHover={setHoveredSlug}
-                      />
-                    ))
-                  : neighborhoods
-                      .filter((nb) => (clusters.get(nb.slug) ?? 0) > 0)
-                      .map((nb) => (
-                        <ClusterPin
-                          key={nb.slug}
-                          nb={nb}
-                          count={clusters.get(nb.slug) ?? 0}
-                          x={px(nb.lng)}
-                          y={py(nb.lat)}
-                          active={hoveredNb === nb.slug}
-                          onZoom={() => zoomToPoint(nb.lat, nb.lng, ZOOM_IN_TARGET)}
-                          onHover={setHoveredNb}
+                  {/* pins / clusters */}
+                  {pinMode
+                    ? filtered.map((p) => (
+                        <PropertyPin
+                          key={p.slug}
+                          p={p}
+                          x={px(p.lng)}
+                          y={py(p.lat)}
+                          hovered={hoveredSlug === p.slug}
+                          showLabel
+                          onSelect={() => openProperty(p.slug)}
+                          onHover={setHoveredSlug}
                         />
-                      ))}
-              </g>
+                      ))
+                    : neighborhoods
+                        .filter((nb) => (clusters.get(nb.slug) ?? 0) > 0)
+                        .map((nb) => (
+                          <ClusterPin
+                            key={nb.slug}
+                            nb={nb}
+                            count={clusters.get(nb.slug) ?? 0}
+                            x={px(nb.lng)}
+                            y={py(nb.lat)}
+                            active={hoveredNb === nb.slug}
+                            onZoom={() => zoomToPoint(nb.lat, nb.lng, ZOOM_IN_TARGET)}
+                            onHover={setHoveredNb}
+                          />
+                        ))}
+                </g>
 
-              {/* compass rose (fixed chrome, corner) */}
-              <g transform="translate(54,66)" className="pointer-events-none select-none" opacity={0.92}>
-                <circle r={27} fill="var(--card)" fillOpacity={0.75} stroke="var(--gold)" strokeWidth={1.3} />
-                <circle r={20} fill="none" stroke="var(--gold)" strokeOpacity={0.5} strokeWidth={0.8} strokeDasharray="2 3.5" />
-                <path d="M 0 -17 L 4.5 0 L -4.5 0 Z" fill="var(--gold)" />
-                <path d="M 0 17 L 4.5 0 L -4.5 0 Z" fill="var(--clay)" />
-                <text y={-31} textAnchor="middle" fontSize={9.5} fontWeight={800} fill="var(--gold-deep)">N</text>
-                <text y={40} textAnchor="middle" fontSize={8} fontWeight={600} fill="var(--muted-foreground)">S</text>
-                <text x={33} y={3.5} textAnchor="middle" fontSize={8} fontWeight={600} fill="var(--muted-foreground)">E</text>
-                <text x={-33} y={3.5} textAnchor="middle" fontSize={8} fontWeight={600} fill="var(--muted-foreground)">W</text>
-              </g>
+                {/* compass rose (fixed chrome, corner) */}
+                <g transform="translate(54,66)" className="pointer-events-none select-none" opacity={0.92}>
+                  <circle r={27} fill="var(--card)" fillOpacity={0.85} stroke="var(--sun)" strokeWidth={1.3} />
+                  <circle r={20} fill="none" stroke="var(--sun)" strokeOpacity={0.5} strokeWidth={0.8} strokeDasharray="2 3.5" />
+                  <path d="M 0 -17 L 4.5 0 L -4.5 0 Z" fill="var(--sun)" />
+                  <path d="M 0 17 L 4.5 0 L -4.5 0 Z" fill="var(--brand-mid)" />
+                  <text y={-31} textAnchor="middle" fontSize={9.5} fontWeight={800} fill="var(--sun-deep)">N</text>
+                  <text y={40} textAnchor="middle" fontSize={8} fontWeight={600} fill="var(--muted-foreground)">S</text>
+                  <text x={33} y={3.5} textAnchor="middle" fontSize={8} fontWeight={600} fill="var(--muted-foreground)">E</text>
+                  <text x={-33} y={3.5} textAnchor="middle" fontSize={8} fontWeight={600} fill="var(--muted-foreground)">W</text>
+                </g>
 
-              {/* scale legend (fixed chrome, bottom-right) */}
-              <g transform={`translate(${W - 148},${H - 34})`} className="pointer-events-none select-none">
-                <path d="M 0 0 H 90 M 0 -5 V 5 M 90 -5 V 5 M 45 -3 V 3" stroke="var(--foreground)" strokeOpacity={0.7} strokeWidth={1.4} fill="none" />
-                <text x={45} y={-9} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--foreground)" fillOpacity={0.75} stroke="var(--sand)" strokeWidth={3} paintOrder="stroke">
-                  2 km
-                </text>
-              </g>
+                {/* scale legend (fixed chrome, bottom-right) */}
+                <g transform={`translate(${W - 148},${H - 34})`} className="pointer-events-none select-none">
+                  <path d="M 0 0 H 90 M 0 -5 V 5 M 90 -5 V 5 M 45 -3 V 3" stroke="var(--foreground)" strokeOpacity={0.7} strokeWidth={1.4} fill="none" />
+                  <text x={45} y={-9} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--foreground)" fillOpacity={0.75} stroke="var(--paper)" strokeWidth={3} paintOrder="stroke">
+                    2 km
+                  </text>
+                </g>
 
-              {/* floating mini card for the hovered pin */}
-              {hoveredProp && (
-                <foreignObject x={cardX} y={cardY} width={196} height={92} className="pointer-events-none">
-                  <div className="flex h-full w-full items-stretch gap-2.5 rounded-xl border border-gold/40 bg-card p-2 luxury-shadow">
-                    <Thumb src={hoveredProp.images[0]} alt={hoveredProp.title} className="w-14 rounded-lg" />
-                    <div className="min-w-0 flex-1 py-0.5">
-                      <p className="truncate text-[11px] font-semibold leading-tight">{hoveredProp.title}</p>
-                      <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{hoveredProp.neighborhood} · {typeLabel[hoveredProp.type]}</p>
-                      <p className="mt-1 text-[11px] font-bold text-gold-deep dark:text-gold">{formatPriceForStatus(hoveredProp.priceKes, hoveredProp.status)}</p>
+                {/* floating mini card for the hovered pin */}
+                {hoveredProp && (
+                  <foreignObject x={cardX} y={cardY} width={196} height={92} className="pointer-events-none">
+                    <div className="flex h-full w-full items-stretch gap-2.5 rounded-xl border border-sun/40 bg-white p-2 soft-shadow">
+                      <Thumb src={hoveredProp.images[0]} alt={hoveredProp.title} className="w-14 rounded-lg" />
+                      <div className="min-w-0 flex-1 py-0.5">
+                        <p className="truncate text-[11px] font-semibold leading-tight">{hoveredProp.title}</p>
+                        <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{hoveredProp.neighborhood} · {typeLabel[hoveredProp.type]}</p>
+                        <p className="mt-1 text-[11px] font-bold text-brand">{formatPriceForStatus(hoveredProp.priceKes, hoveredProp.status)}</p>
+                      </div>
                     </div>
-                  </div>
-                </foreignObject>
-              )}
-            </svg>
+                  </foreignObject>
+                )}
+              </svg>
 
-            {/* zoom controls */}
-            <div className="absolute right-3 top-3 flex flex-col gap-1.5">
-              <Button
-                size="icon"
-                variant="outline"
-                aria-label="Zoom in"
-                onClick={() => zoomBy(1.45)}
-                className="size-11 rounded-lg border-border/70 bg-card/90 backdrop-blur hover:bg-gold/15 hover:text-gold-deep dark:hover:text-gold"
-              >
-                <Plus className="size-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="outline"
-                aria-label="Zoom out"
-                onClick={() => zoomBy(1 / 1.45)}
-                className="size-11 rounded-lg border-border/70 bg-card/90 backdrop-blur hover:bg-gold/15 hover:text-gold-deep dark:hover:text-gold"
-              >
-                <Minus className="size-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="outline"
-                aria-label="Reset map view"
-                onClick={resetView}
-                className="size-11 rounded-lg border-border/70 bg-card/90 backdrop-blur hover:bg-gold/15 hover:text-gold-deep dark:hover:text-gold"
-              >
-                <Maximize className="size-4" />
-              </Button>
+              {/* zoom controls */}
+              <div className="absolute right-3 top-3 flex flex-col gap-1.5">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label="Zoom in"
+                  onClick={() => zoomBy(1.45)}
+                  className="size-11 rounded-xl border-line bg-white/90 backdrop-blur hover:bg-brand-soft hover:text-brand"
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label="Zoom out"
+                  onClick={() => zoomBy(1 / 1.45)}
+                  className="size-11 rounded-xl border-line bg-white/90 backdrop-blur hover:bg-brand-soft hover:text-brand"
+                >
+                  <Minus className="size-4" aria-hidden="true" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label="Reset map view"
+                  onClick={resetView}
+                  className="size-11 rounded-xl border-line bg-white/90 backdrop-blur hover:bg-brand-soft hover:text-brand"
+                >
+                  <Maximize className="size-4" aria-hidden="true" />
+                </Button>
+              </div>
+
+              <p className="absolute bottom-2 left-3 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/80">
+                Stylised map — not to scale
+              </p>
             </div>
-
-            <p className="absolute bottom-2 left-3 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/80">
-              Stylised map — not to scale
-            </p>
           </div>
+
+          {/* synced list panel */}
+          <aside className="w-full shrink-0 lg:w-[380px]" aria-label="Filtered listings list">
+            <div className="flex items-center justify-between px-1 pb-2">
+              <h3 className="text-lg font-bold">Matching residences</h3>
+              <Badge variant="outline" className="border-sun/50 text-sun-deep">{filtered.length}</Badge>
+            </div>
+            {filtered.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line bg-white/60 p-8 text-center">
+                <Home className="size-6 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm text-muted-foreground">No listings match these filters. Try widening your search.</p>
+              </div>
+            ) : (
+              <div className="delima-scroll max-h-[420px] overflow-y-auto rounded-2xl border border-line bg-white p-2 lg:max-h-[588px]">
+                <ul className="space-y-1">
+                  {filtered.map((p) => {
+                    const active = hoveredSlug === p.slug
+                    return (
+                      <li key={p.slug}>
+                        <button
+                          onClick={() => openProperty(p.slug)}
+                          onMouseEnter={() => setHoveredSlug(p.slug)}
+                          onMouseLeave={() => setHoveredSlug(null)}
+                          aria-label={`Open ${p.title}, ${formatKes(p.priceKes)}`}
+                          className={cn(
+                            'flex min-h-[64px] w-full items-center gap-3 rounded-xl border p-2.5 text-left transition-colors',
+                            active
+                              ? 'border-sun/50 bg-sun-soft ring-1 ring-sun/60'
+                              : 'border-transparent hover:bg-brand-soft/60',
+                          )}
+                        >
+                          <Thumb src={p.images[0]} alt={p.title} className="h-12 w-12 rounded-lg" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold">{p.title}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {p.neighborhood} · {typeLabel[p.type]} · {p.bedrooms} bd · {p.bathrooms} ba
+                            </span>
+                            <span className="block text-sm font-bold text-brand">{formatPriceForStatus(p.priceKes, p.status)}</span>
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
+          </aside>
         </div>
-
-        {/* synced list panel */}
-        <aside className="w-full shrink-0 lg:w-[380px]" aria-label="Filtered listings list">
-          <div className="flex items-center justify-between px-1 pb-2">
-            <h3 className="font-display text-lg">Matching residences</h3>
-            <Badge variant="outline" className="border-gold/40 text-gold-deep dark:text-gold">{filtered.length}</Badge>
-          </div>
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-8 text-center">
-              <Home className="size-6 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No listings match these filters. Try widening your search.</p>
-            </div>
-          ) : (
-            <div className="delima-scroll max-h-[420px] overflow-y-auto rounded-xl border bg-card p-2 lg:max-h-[588px]">
-              <ul className="space-y-1">
-                {filtered.map((p) => {
-                  const active = hoveredSlug === p.slug
-                  return (
-                    <li key={p.slug}>
-                      <button
-                        onClick={() => openProperty(p.slug)}
-                        onMouseEnter={() => setHoveredSlug(p.slug)}
-                        onMouseLeave={() => setHoveredSlug(null)}
-                        aria-label={`Open ${p.title}, ${formatKes(p.priceKes)}`}
-                        className={cn(
-                          'flex min-h-[64px] w-full items-center gap-3 rounded-lg p-2 text-left transition-colors',
-                          active ? 'bg-gold/10 ring-1 ring-gold/50' : 'hover:bg-sand/70 dark:hover:bg-accent/60',
-                        )}
-                      >
-                        <Thumb src={p.images[0]} alt={p.title} className="h-12 w-12 rounded-lg" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-semibold">{p.title}</span>
-                          <span className="block truncate text-xs text-muted-foreground">{p.neighborhood} · {typeLabel[p.type]} · {p.bedrooms} bed</span>
-                          <span className="block text-sm font-bold text-gold-deep dark:text-gold">{formatPriceForStatus(p.priceKes, p.status)}</span>
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          )}
-        </aside>
-      </div>
+      </Reveal>
     </div>
   )
 }
@@ -727,5 +752,9 @@ function MapContent({ onRetry }: { onRetry: () => void }) {
 
 export default function MapView() {
   const [attempt, setAttempt] = useState(0)
-  return <MapContent key={attempt} onRetry={() => setAttempt((a) => a + 1)} />
+  return (
+    <Container className="py-8 sm:py-12">
+      <MapContent key={attempt} onRetry={() => setAttempt((a) => a + 1)} />
+    </Container>
+  )
 }

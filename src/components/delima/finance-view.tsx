@@ -1,9 +1,10 @@
-// Delima Realtors Platform 2.0 — "The Finance Desk" (Task 5-d)
+// Delima Realtors 3.0 — "Mortgage & ownership costs" studio (Task REV-5)
 // Mortgage calculator + affordability planner, Kenyan-rate aware.
+// All math preserved exactly (computeMortgage, 1/3-income affordability,
+// extra-payment early payoff, LTV); visuals rebuilt on the 3.0 design system.
 'use client'
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { motion } from 'framer-motion'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   Area,
   AreaChart,
@@ -18,17 +19,19 @@ import {
   Building2,
   Calculator,
   CalendarClock,
+  Coins,
+  HandCoins,
   Info,
   Landmark,
   LineChart,
   Receipt,
+  ScrollText,
   Search,
   Sparkles,
   Wallet,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -39,6 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
 import {
   Table,
@@ -53,6 +57,7 @@ import { useProperties } from '@/hooks/use-delima-data'
 import { useAppStore } from '@/lib/store'
 import { formatKes } from '@/lib/format'
 import type { PropertyDTO } from '@/lib/types'
+import { DismissibleNote, Reveal, Section, StatBlock } from './ui-kit'
 
 /* ----------------------------- helpers ----------------------------- */
 
@@ -69,11 +74,10 @@ function axisKes(v: number): string {
 interface TooltipItem {
   name?: string | number
   value?: number | string
-  color?: string
 }
 
-/** Espresso/cream chart tooltip — shared by all Delima charts. */
-function EspressoTip({
+/** Brand-styled chart tooltip — evergreen panel, amber label. */
+function BrandTip({
   active,
   payload,
   label,
@@ -88,15 +92,15 @@ function EspressoTip({
 }) {
   if (!active || !payload || payload.length === 0) return null
   return (
-    <div className="rounded-md border border-gold/40 bg-espresso px-3 py-2 text-cream shadow-lg dark:border-gold/30 dark:text-foreground">
+    <div className="rounded-xl border border-brand-mid/60 bg-brand px-3 py-2 text-white shadow-lg">
       {label !== undefined && labelFormatter && (
-        <p className="mb-1 text-[11px] font-semibold tracking-wide text-gold-soft">
+        <p className="mb-1 text-[11px] font-bold tracking-wide text-sun">
           {labelFormatter(label)}
         </p>
       )}
       <div className="space-y-0.5">
         {payload.map((item, i) => (
-          <p key={i} className="text-xs font-medium">
+          <p key={i} className="text-xs font-semibold">
             {item.name ? `${item.name}: ` : ''}
             {formatValue ? formatValue(Number(item.value ?? 0)) : String(item.value ?? '')}
           </p>
@@ -114,10 +118,12 @@ interface MoneyInputProps {
   value: number
   onChange: (v: number) => void
   hint?: string
+  /** Visually hide the label (used under sliders that already carry one). */
+  srLabel?: boolean
 }
 
 /** Numeric input that shows full formatKes formatting on blur, raw digits on focus. */
-function MoneyInput({ id, label, value, onChange, hint }: MoneyInputProps) {
+function MoneyInput({ id, label, value, onChange, hint, srLabel = false }: MoneyInputProps) {
   const [focused, setFocused] = useState(false)
   const [raw, setRaw] = useState('')
   const [lastValue, setLastValue] = useState(value)
@@ -130,14 +136,14 @@ function MoneyInput({ id, label, value, onChange, hint }: MoneyInputProps) {
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-sm font-semibold">
+      <Label htmlFor={id} className={srLabel ? 'sr-only' : 'text-sm font-semibold text-ink'}>
         {label}
       </Label>
       <Input
         id={id}
         inputMode="numeric"
         autoComplete="off"
-        className="h-11 border-border bg-card font-medium tabular-nums"
+        className="h-11 rounded-xl border-line bg-white font-semibold tabular-nums text-ink"
         value={focused ? raw : value > 0 ? formatKes(value) : ''}
         placeholder="0"
         onFocus={() => {
@@ -174,10 +180,10 @@ function SliderField({ id, label, caption, value, min, max, step, onChange, aria
   return (
     <div className="space-y-2.5">
       <div className="flex items-baseline justify-between gap-2">
-        <Label htmlFor={id} className="text-sm font-semibold">
+        <Label htmlFor={id} className="text-sm font-semibold text-ink">
           {label}
         </Label>
-        <span className="text-sm font-semibold text-gold-deep tabular-nums dark:text-gold">{caption}</span>
+        <span className="font-mono text-sm font-bold text-brand">{caption}</span>
       </div>
       <Slider
         id={id}
@@ -290,6 +296,60 @@ function computeMortgage(
   }
 }
 
+/* ------------------------ acquisition costs ------------------------ */
+
+interface CostRow {
+  icon: ReactNode
+  label: string
+  note: string
+  value: string
+  strong?: boolean
+}
+
+/** One-off Kenyan acquisition costs, computed from the current price. */
+function useAcquisitionCosts(price: number): { rows: CostRow[]; total: string } {
+  return useMemo(() => {
+    const stampDuty = price * 0.04 // 4% urban / 2% rural — urban rate shown
+    const legalFees = price * 0.015 * 1.16 // ~1.5% + 16% VAT
+    const valuation = price * 0.0025 // ~0.25%
+    const commissionLow = price * 0.0125 // 1.25%
+    const commissionHigh = price * 0.025 // 2.5%
+    const totalLow = stampDuty + legalFees + valuation + commissionLow
+    const totalHigh = stampDuty + legalFees + valuation + commissionHigh
+
+    const rows: CostRow[] = [
+      {
+        icon: <Landmark className="size-4" aria-hidden="true" />,
+        label: 'Stamp duty',
+        note: '4% urban · 2% rural',
+        value: formatKes(Math.round(stampDuty)),
+      },
+      {
+        icon: <ScrollText className="size-4" aria-hidden="true" />,
+        label: 'Legal fees',
+        note: '~1.5% + VAT',
+        value: formatKes(Math.round(legalFees)),
+      },
+      {
+        icon: <Building2 className="size-4" aria-hidden="true" />,
+        label: 'Valuation',
+        note: '~0.25%',
+        value: formatKes(Math.round(valuation)),
+      },
+      {
+        icon: <HandCoins className="size-4" aria-hidden="true" />,
+        label: 'Agent commission',
+        note: '1.25% – 2.5%',
+        value: `${formatKes(Math.round(commissionLow), { compact: true })} – ${formatKes(Math.round(commissionHigh), { compact: true })}`,
+      },
+    ]
+    return {
+      rows,
+      total: `${formatKes(Math.round(totalLow), { compact: true })} – ${formatKes(Math.round(totalHigh), { compact: true })}`,
+    }
+  }, [price])
+}
+
 /* ------------------------------ view ------------------------------- */
 
 export default function FinanceView() {
@@ -350,6 +410,8 @@ export default function FinanceView() {
 
   const canSearchHomes = afford.budget > 5_000_000
 
+  const costs = useAcquisitionCosts(price)
+
   const onPickListing = (id: string) => {
     setSelectedListing(id)
     const p = properties.find(x => x.id === id)
@@ -358,370 +420,473 @@ export default function FinanceView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 md:py-14 lg:px-8">
-      {/* ---------------- header ---------------- */}
-      <motion.header
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="mb-10 max-w-2xl"
-      >
-        <p className="eyebrow mb-3">Finance</p>
-        <h2 className="gold-underline font-display text-3xl leading-tight sm:text-4xl md:text-5xl">
-          Own it with <span className="gold-gradient-text">clarity</span>
-        </h2>
-        <p className="mt-5 text-base leading-relaxed text-muted-foreground md:text-lg">
-          Run the numbers before you fall in love with the view. Kenyan rates, honest math,
-          zero surprises — from deposit to final payment.
-        </p>
-      </motion.header>
+    <div className="flex flex-col">
+      <Section className="pb-16 sm:pb-20">
+        {/* ---------------- header ---------------- */}
+        <Reveal className="mb-10 max-w-2xl sm:mb-12">
+          <p className="eyebrow mb-3">Finance desk</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
+            Mortgage &amp; ownership costs
+          </h1>
+          <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
+            Run the numbers before you fall in love with the view. Kenyan rates, honest math,
+            zero surprises — from deposit to final payment.
+          </p>
+          <div className="mt-6 h-1 w-14 rounded-full bg-sun" aria-hidden="true" />
+        </Reveal>
 
-      <Tabs defaultValue="mortgage" className="w-full">
-        <TabsList className="mb-8 grid h-auto w-full max-w-md grid-cols-2 gap-1 p-1.5">
-          <TabsTrigger
-            value="mortgage"
-            className="min-h-11 gap-2 py-2 text-sm font-semibold sm:text-[0.95rem]"
-          >
-            <Calculator className="size-4" aria-hidden="true" /> Mortgage
-          </TabsTrigger>
-          <TabsTrigger
-            value="affordability"
-            className="min-h-11 gap-2 py-2 text-sm font-semibold sm:text-[0.95rem]"
-          >
-            <Wallet className="size-4" /> Affordability
-          </TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="mortgage" className="w-full">
+          <TabsList className="mb-8 grid h-auto w-full max-w-md grid-cols-2 gap-1 rounded-full p-1.5">
+            <TabsTrigger
+              value="mortgage"
+              className="min-h-11 gap-2 rounded-full py-2 text-sm font-semibold sm:text-[0.95rem]"
+            >
+              <Calculator className="size-4" aria-hidden="true" />
+              Mortgage
+            </TabsTrigger>
+            <TabsTrigger
+              value="affordability"
+              className="min-h-11 gap-2 rounded-full py-2 text-sm font-semibold sm:text-[0.95rem]"
+            >
+              <Wallet className="size-4" aria-hidden="true" />
+              Affordability
+            </TabsTrigger>
+          </TabsList>
 
-        {/* ================= MORTGAGE TAB ================= */}
-        <TabsContent value="mortgage" className="mt-0 focus-visible:outline-none">
-          <div className="grid gap-6 lg:grid-cols-[400px_minmax(0,1fr)]">
-            {/* inputs */}
-            <Card className="luxury-card h-fit border-border/80">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 font-display text-xl">
-                  <Landmark className="size-5 text-gold-deep dark:text-gold" aria-hidden="true" />
-                  Mortgage calculator
-                </CardTitle>
-                <CardDescription>Shape the deal, we handle the arithmetic.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="space-y-1.5">
-                  <Label htmlFor="listing-pick">Load from a listing</Label>
-                  <Select value={selectedListing} onValueChange={onPickListing}>
-                    <SelectTrigger id="listing-pick" aria-label="Load price from a listing" className="h-11 w-full">
-                      <SelectValue placeholder="Choose a Delima listing…" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {loading && <div className="px-3 py-2 text-sm text-muted-foreground">Loading listings…</div>}
-                      {error && <div className="px-3 py-2 text-sm text-destructive">Could not load listings.</div>}
-                      {!loading &&
-                        !error &&
-                        properties.map((p: PropertyDTO) => (
-                          <SelectItem key={p.id} value={p.id} className="max-w-full">
-                            <span className="block max-w-[16rem] truncate sm:max-w-[18rem]">
-                              {p.title} — {formatKes(p.priceKes, { compact: true })}
-                            </span>
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          {/* ================= MORTGAGE TAB ================= */}
+          <TabsContent value="mortgage" className="mt-0 focus-visible:outline-none">
+            <div className="grid gap-6 lg:grid-cols-5">
+              {/* ---- LEFT: calculator ---- */}
+              <Reveal className="lg:col-span-3">
+                <div className="card-modern p-6">
+                  <header className="flex items-center gap-3">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
+                      <Landmark className="size-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <h2 className="text-lg font-bold text-ink">Mortgage calculator</h2>
+                      <p className="text-sm text-muted-foreground">Shape the deal, we handle the arithmetic.</p>
+                    </div>
+                  </header>
 
-                <MoneyInput
-                  id="fin-price"
-                  label="Property price (KES)"
-                  value={price}
-                  onChange={v => setPrice(v)}
-                  hint="Purchase price agreed with the seller"
-                />
+                  <div className="mt-6 space-y-6">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="listing-pick" className="text-sm font-semibold text-ink">
+                        Load from a listing
+                      </Label>
+                      <Select value={selectedListing} onValueChange={onPickListing}>
+                        <SelectTrigger
+                          id="listing-pick"
+                          aria-label="Load price from a listing"
+                          className="h-11 w-full rounded-xl"
+                        >
+                          <SelectValue placeholder="Choose a Delima listing…" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-72">
+                          {loading && (
+                            <div className="px-3 py-2 text-sm text-muted-foreground">Loading listings…</div>
+                          )}
+                          {error && (
+                            <div className="px-3 py-2 text-sm text-destructive">Could not load listings.</div>
+                          )}
+                          {!loading &&
+                            !error &&
+                            properties.map((p: PropertyDTO) => (
+                              <SelectItem key={p.id} value={p.id} className="max-w-full">
+                                <span className="block max-w-[16rem] truncate sm:max-w-[18rem]">
+                                  {p.title} — {formatKes(p.priceKes, { compact: true })}
+                                </span>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <SliderField
-                  id="fin-deposit"
-                  label="Deposit"
-                  caption={`${depositPct}% · ${formatKes(deposit, { compact: true })}`}
-                  value={depositPct}
-                  min={0}
-                  max={50}
-                  step={1}
-                  onChange={setDepositPct}
-                  ariaValueText={`${depositPct} percent deposit, ${formatKes(deposit)}`}
-                />
+                    {/* price: slider + numeric display */}
+                    <SliderField
+                      id="fin-price"
+                      label="Property price"
+                      caption={formatKes(price, { compact: true })}
+                      value={price}
+                      min={2_000_000}
+                      max={200_000_000}
+                      step={500_000}
+                      onChange={setPrice}
+                      ariaValueText={`Purchase price ${formatKes(price)}`}
+                    />
+                    <MoneyInput
+                      id="fin-price-exact"
+                      label="Property price (KES)"
+                      srLabel
+                      value={price}
+                      onChange={v => setPrice(v)}
+                      hint="Purchase price agreed with the seller — type for an exact figure"
+                    />
 
-                <SliderField
-                  id="fin-rate"
-                  label="Annual interest"
-                  caption={`${ratePct.toFixed(1)}%`}
-                  value={ratePct}
-                  min={5}
-                  max={20}
-                  step={0.1}
-                  onChange={setRatePct}
-                  ariaValueText={`${ratePct.toFixed(1)} percent per annum`}
-                />
+                    <Separator className="bg-line" />
 
-                <SliderField
-                  id="fin-term"
-                  label="Term"
-                  caption={`${termYears} years`}
-                  value={termYears}
-                  min={5}
-                  max={25}
-                  step={1}
-                  onChange={setTermYears}
-                  ariaValueText={`${termYears} years`}
-                />
+                    <SliderField
+                      id="fin-deposit"
+                      label="Deposit"
+                      caption={`${depositPct}% · ${formatKes(deposit, { compact: true })}`}
+                      value={depositPct}
+                      min={0}
+                      max={50}
+                      step={1}
+                      onChange={setDepositPct}
+                      ariaValueText={`${depositPct} percent deposit, ${formatKes(deposit)}`}
+                    />
 
-                <MoneyInput
-                  id="fin-extra"
-                  label="Extra monthly payment (optional)"
-                  value={extraMonthly}
-                  onChange={v => setExtraMonthly(v)}
-                  hint="Pay a little more each month to finish the loan early"
-                />
-              </CardContent>
-            </Card>
+                    <SliderField
+                      id="fin-rate"
+                      label="Annual interest"
+                      caption={`${ratePct.toFixed(1)}%`}
+                      value={ratePct}
+                      min={5}
+                      max={20}
+                      step={0.1}
+                      onChange={setRatePct}
+                      ariaValueText={`${ratePct.toFixed(1)} percent per annum`}
+                    />
 
-            {/* results */}
-            <div className="min-w-0 space-y-6">
-              {/* derived cards */}
-              <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-                <Card className="luxury-shadow border-espresso/10 bg-espresso text-cream dark:border-gold/25 dark:bg-espresso-soft dark:text-foreground">
-                  <CardContent className="p-4 md:p-5">
-                    <p className="eyebrow mb-2 dark:text-gold-soft">Monthly repayment</p>
-                    <p className="font-display text-2xl leading-tight gold-gradient-text tabular-nums sm:text-3xl xl:text-[1.7rem]">
+                    <SliderField
+                      id="fin-term"
+                      label="Term"
+                      caption={`${termYears} years`}
+                      value={termYears}
+                      min={5}
+                      max={25}
+                      step={1}
+                      onChange={setTermYears}
+                      ariaValueText={`${termYears} years`}
+                    />
+
+                    <MoneyInput
+                      id="fin-extra"
+                      label="Extra monthly payment (optional)"
+                      value={extraMonthly}
+                      onChange={v => setExtraMonthly(v)}
+                      hint="Pay a little more each month to finish the loan early"
+                    />
+                  </div>
+
+                  <Separator className="my-6 bg-line" />
+
+                  {/* ---- result ---- */}
+                  <div aria-live="polite">
+                    <p className="eyebrow mb-1">Monthly repayment</p>
+                    <p className="font-mono text-4xl font-extrabold tracking-tight text-brand">
                       {formatKes(Math.round(result.monthly))}
                     </p>
-                    <p className="mt-2 text-[11px] leading-snug text-cream/70 dark:text-foreground/70">
+                    <p className="mt-2 text-sm text-muted-foreground">
                       {principal > 0
-                        ? `Loan ${formatKes(principal, { compact: true })} over ${termYears} yrs`
-                        : 'No loan'}
+                        ? `Loan ${formatKes(principal, { compact: true })} over ${termYears} yrs at ${ratePct.toFixed(1)}%`
+                        : 'No loan — deposit covers the full price'}
                     </p>
-                  </CardContent>
-                </Card>
 
-                <StatCard
-                  icon={<BadgePercent className="size-4" aria-hidden="true" />}
-                  label="Total interest"
-                  value={formatKes(Math.round(result.totalInterest), { compact: true })}
-                  sub={`across ${loanMonths > 0 ? Math.ceil(loanMonths / 12) : 0} yrs`}
-                />
-                <StatCard
-                  icon={<Receipt className="size-4" aria-hidden="true" />}
-                  label="Total payable"
-                  value={formatKes(Math.round(result.totalPayable), { compact: true })}
-                  sub="principal + interest"
-                />
-                <StatCard
-                  icon={<Building2 className="size-4" aria-hidden="true" />}
-                  label="Loan-to-value"
-                  value={`${Math.round(result.ltvPct)}%`}
-                  sub={`deposit ${formatKes(deposit, { compact: true })}`}
-                />
-              </div>
-
-              {/* amortization */}
-              {principal <= 0 ? (
-                <Card className="border-dashed border-gold/40 bg-sand/40 dark:bg-espresso-soft/60">
-                  <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-                    <span className="flex size-12 items-center justify-center rounded-full gold-gradient-bg text-espresso">
-                      <Sparkles className="size-6" aria-hidden="true" />
-                    </span>
-                    <h3 className="font-display text-xl">You own it outright</h3>
-                    <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-                      Your deposit covers the full purchase price — no loan, no interest,
-                      nothing but the keys. Adjust the deposit slider below 100% to model financing.
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <>
-                  <Card className="border-border/80">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 font-display text-lg">
-                        <LineChart className="size-5 text-gold-deep dark:text-gold" aria-hidden="true" />
-                        Loan balance over time
-                      </CardTitle>
-                      <CardDescription>
-                        {extraMonthly > 0 && loanMonths < baselineMonths
-                          ? `Extra payments clear the loan ${baselineMonths - loanMonths} months earlier (${Math.ceil(loanMonths / 12)} yrs vs ${Math.ceil(baselineMonths / 12)} yrs).`
-                          : 'Remaining balance month by month — the gold empties as you build equity.'}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64 w-full md:h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={result.schedule} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                            <defs>
-                              <linearGradient id="delimaBalanceFill" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="var(--gold)" stopOpacity={0.55} />
-                                <stop offset="100%" stopColor="var(--gold)" stopOpacity={0.04} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                            <XAxis
-                              dataKey="month"
-                              ticks={yearTicks}
-                              tickFormatter={(m: number | string) => `Y${Math.round(Number(m) / 12)}`}
-                              tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
-                              stroke="var(--border)"
-                              tickMargin={6}
-                            />
-                            <YAxis
-                              tickFormatter={axisKes}
-                              tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
-                              stroke="var(--border)"
-                              width={52}
-                            />
-                            <Tooltip
-                              cursor={{ stroke: 'var(--gold)', strokeDasharray: '4 4' }}
-                              content={
-                                <EspressoTip
-                                  formatValue={v => formatKes(v)}
-                                  labelFormatter={l => `Month ${String(l)} · Year ${Math.max(1, Math.ceil(Number(l) / 12))}`}
-                                />
-                              }
-                            />
-                            <Area
-                              type="monotone"
-                              dataKey="balance"
-                              name="Balance"
-                              stroke="var(--gold)"
-                              strokeWidth={2.5}
-                              fill="url(#delimaBalanceFill)"
-                            />
-                          </AreaChart>
-                        </ResponsiveContainer>
+                    {/* mini breakdown: principal vs interest */}
+                    <dl className="mt-5 grid grid-cols-3 gap-3">
+                      <div className="rounded-2xl bg-brand-soft/70 p-3.5">
+                        <dt className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand">
+                          <Coins className="size-3.5" aria-hidden="true" />
+                          Principal
+                        </dt>
+                        <dd className="mt-1 font-mono text-sm font-bold text-ink sm:text-base">
+                          {formatKes(principal, { compact: true })}
+                        </dd>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="rounded-2xl bg-sun-soft p-3.5">
+                        <dt className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-sun-deep">
+                          <BadgePercent className="size-3.5" aria-hidden="true" />
+                          Interest
+                        </dt>
+                        <dd className="mt-1 font-mono text-sm font-bold text-ink sm:text-base">
+                          {formatKes(Math.round(result.totalInterest), { compact: true })}
+                        </dd>
+                      </div>
+                      <div className="rounded-2xl bg-muted p-3.5">
+                        <dt className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                          <Receipt className="size-3.5" aria-hidden="true" />
+                          Total
+                        </dt>
+                        <dd className="mt-1 font-mono text-sm font-bold text-ink sm:text-base">
+                          {formatKes(Math.round(result.totalPayable), { compact: true })}
+                        </dd>
+                      </div>
+                    </dl>
+                    {extraMonthly > 0 && loanMonths < baselineMonths && (
+                      <p className="mt-3 rounded-xl bg-brand-soft/70 px-3.5 py-2.5 text-xs font-semibold text-brand">
+                        Extra payments clear the loan {baselineMonths - loanMonths} months earlier (
+                        {Math.ceil(loanMonths / 12)} yrs vs {Math.ceil(baselineMonths / 12)} yrs).
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Reveal>
 
-                  <Card className="border-border/80">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 font-display text-lg">
-                        <CalendarClock className="size-5 text-gold-deep dark:text-gold" aria-hidden="true" />
-                        Yearly amortization
-                      </CardTitle>
-                      <CardDescription>What each year of the loan actually costs you.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ScrollArea className="max-h-96 delima-scroll">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="hover:bg-transparent">
-                              <TableHead className="font-semibold">Year</TableHead>
-                              <TableHead className="text-right font-semibold">Principal paid</TableHead>
-                              <TableHead className="text-right font-semibold">Interest paid</TableHead>
-                              <TableHead className="text-right font-semibold">Balance</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {result.years.map(row => (
-                              <TableRow key={row.year}>
-                                <TableCell className="font-medium">Year {row.year}</TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                  {formatKes(Math.round(row.principal))}
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums text-muted-foreground">
-                                  {formatKes(Math.round(row.interest))}
-                                </TableCell>
-                                <TableCell className="text-right font-semibold tabular-nums text-gold-deep dark:text-gold">
-                                  {formatKes(Math.round(row.balance))}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-                </>
-              )}
+              {/* ---- RIGHT: one-off acquisition costs ---- */}
+              <Reveal delay={0.08} className="lg:col-span-2">
+                <div className="flex h-full flex-col gap-4">
+                  <div className="card-modern flex-1 p-6">
+                    <header className="flex items-center gap-3">
+                      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-sun-soft text-sun-deep">
+                        <Receipt className="size-5" aria-hidden="true" />
+                      </span>
+                      <div>
+                        <h2 className="text-lg font-bold text-ink">One-off acquisition costs</h2>
+                        <p className="text-sm text-muted-foreground">On top of the purchase price.</p>
+                      </div>
+                    </header>
+
+                    <ul className="mt-5">
+                      {costs.rows.map(row => (
+                        <li
+                          key={row.label}
+                          className="flex items-start justify-between gap-3 border-b border-line py-3.5 last:border-b-0"
+                        >
+                          <div className="flex min-w-0 items-start gap-2.5">
+                            <span className="mt-0.5 text-brand">{row.icon}</span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-ink">{row.label}</p>
+                              <p className="text-xs text-muted-foreground">{row.note}</p>
+                            </div>
+                          </div>
+                          <p className="whitespace-nowrap pt-0.5 font-mono text-sm font-bold tabular-nums text-ink">
+                            {row.value}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Separator className="my-4 bg-line" />
+
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-bold uppercase tracking-wide text-brand">Typical total</p>
+                      <p className="font-mono text-base font-extrabold tabular-nums text-brand">{costs.total}</p>
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                      Computed live from the {formatKes(price, { compact: true })} price above — stamp duty
+                      at the urban rate and commission at both ends of the range.
+                    </p>
+                  </div>
+
+                  <DismissibleNote>
+                    <strong className="font-bold">Estimates only</strong> — confirm with your advocate.
+                  </DismissibleNote>
+                </div>
+              </Reveal>
             </div>
-          </div>
-        </TabsContent>
 
-        {/* ================= AFFORDABILITY TAB ================= */}
-        <TabsContent value="affordability" className="mt-0 focus-visible:outline-none">
-          <div className="grid gap-6 lg:grid-cols-[400px_minmax(0,1fr)]">
-            <Card className="luxury-card h-fit border-border/80">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 font-display text-xl">
-                  <Wallet className="size-5 text-gold-deep dark:text-gold" aria-hidden="true" />
-                  What can I afford?
-                </CardTitle>
-                <CardDescription>Built on the one-third income rule Kenyan banks apply.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <MoneyInput
-                  id="fin-income"
-                  label="Monthly net income (KES)"
-                  value={income}
-                  onChange={setIncome}
-                  hint="Take-home pay after tax and deductions"
-                />
-                <MoneyInput
-                  id="fin-obligations"
-                  label="Monthly obligations (KES)"
-                  value={obligations}
-                  onChange={setObligations}
-                  hint="Existing loans, cards, support you already commit"
-                />
-                <MoneyInput
-                  id="fin-deposit-avail"
-                  label="Deposit available (KES)"
-                  value={depositAvailable}
-                  onChange={setDepositAvailable}
-                  hint="Savings you can put down on day one"
-                />
-                <SliderField
-                  id="fin-afford-rate"
-                  label="Expected interest"
-                  caption={`${affordRate.toFixed(1)}%`}
-                  value={affordRate}
-                  min={5}
-                  max={20}
-                  step={0.1}
-                  onChange={setAffordRate}
-                  ariaValueText={`${affordRate.toFixed(1)} percent per annum`}
-                />
-                <SliderField
-                  id="fin-afford-term"
-                  label="Term"
-                  caption={`${affordTerm} years`}
-                  value={affordTerm}
-                  min={5}
-                  max={25}
-                  step={1}
-                  onChange={setAffordTerm}
-                  ariaValueText={`${affordTerm} years`}
-                />
-              </CardContent>
-            </Card>
+            {/* ---- amortization ---- */}
+            {principal <= 0 ? (
+              <div className="mt-6 flex flex-col items-center gap-3 rounded-3xl border border-dashed border-sun/50 bg-sun-soft/50 p-10 text-center">
+                <span className="flex size-12 items-center justify-center rounded-2xl bg-sun text-brand-deep">
+                  <Sparkles className="size-6" aria-hidden="true" />
+                </span>
+                <h3 className="text-xl font-bold text-ink">You own it outright</h3>
+                <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+                  Your deposit covers the full purchase price — no loan, no interest, nothing but
+                  the keys. Adjust the deposit slider below 100% of the price to model financing.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6 grid gap-6 lg:grid-cols-5">
+                <Reveal className="lg:col-span-3">
+                  <div className="card-modern h-full p-6">
+                    <header className="flex items-center gap-3">
+                      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
+                        <LineChart className="size-5" aria-hidden="true" />
+                      </span>
+                      <div>
+                        <h2 className="text-lg font-bold text-ink">Loan balance over time</h2>
+                        <p className="text-sm text-muted-foreground">
+                          Remaining balance month by month — the amber empties as you build equity.
+                        </p>
+                      </div>
+                    </header>
+                    <div className="mt-4 h-64 w-full md:h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={result.schedule} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="delimaBalanceFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.5} />
+                              <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.04} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                          <XAxis
+                            dataKey="month"
+                            ticks={yearTicks}
+                            tickFormatter={(m: number | string) => `Y${Math.round(Number(m) / 12)}`}
+                            tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
+                            stroke="var(--line)"
+                            tickMargin={6}
+                          />
+                          <YAxis
+                            tickFormatter={axisKes}
+                            tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
+                            stroke="var(--line)"
+                            width={52}
+                          />
+                          <Tooltip
+                            cursor={{ stroke: 'var(--chart-2)', strokeDasharray: '4 4' }}
+                            content={
+                              <BrandTip
+                                formatValue={v => formatKes(v)}
+                                labelFormatter={l => `Month ${String(l)} · Year ${Math.max(1, Math.ceil(Number(l) / 12))}`}
+                              />
+                            }
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="balance"
+                            name="Balance"
+                            stroke="var(--chart-2)"
+                            strokeWidth={2.5}
+                            fill="url(#delimaBalanceFill)"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </Reveal>
 
-            <div className="min-w-0 space-y-6">
-              <Card className="luxury-shadow border-espresso/10 bg-espresso text-cream dark:border-gold/25 dark:bg-espresso-soft dark:text-foreground">
-                <CardContent className="p-6 md:p-8">
-                  <p className="eyebrow mb-3 dark:text-gold-soft">Your budget</p>
-                  <p className="font-display text-4xl leading-none gold-gradient-text tabular-nums sm:text-5xl md:text-6xl">
+                <Reveal delay={0.08} className="lg:col-span-2">
+                  <div className="card-modern h-full p-6">
+                    <header className="flex items-center gap-3">
+                      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
+                        <CalendarClock className="size-5" aria-hidden="true" />
+                      </span>
+                      <div>
+                        <h2 className="text-lg font-bold text-ink">Yearly amortization</h2>
+                        <p className="text-sm text-muted-foreground">What each year of the loan actually costs you.</p>
+                      </div>
+                    </header>
+                    <ScrollArea className="delima-scroll mt-4 max-h-80">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead className="font-semibold">Year</TableHead>
+                            <TableHead className="text-right font-semibold">Principal</TableHead>
+                            <TableHead className="text-right font-semibold">Interest</TableHead>
+                            <TableHead className="text-right font-semibold">Balance</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {result.years.map(row => (
+                            <TableRow key={row.year}>
+                              <TableCell className="font-semibold">Year {row.year}</TableCell>
+                              <TableCell className="text-right font-mono text-xs tabular-nums">
+                                {formatKes(Math.round(row.principal))}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-xs tabular-nums text-muted-foreground">
+                                {formatKes(Math.round(row.interest))}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-xs font-bold tabular-nums text-brand">
+                                {formatKes(Math.round(row.balance))}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </div>
+                </Reveal>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ================= AFFORDABILITY TAB ================= */}
+          <TabsContent value="affordability" className="mt-0 focus-visible:outline-none">
+            <div className="grid gap-6 lg:grid-cols-5">
+              <Reveal className="lg:col-span-3">
+                <div className="card-modern p-6">
+                  <header className="flex items-center gap-3">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
+                      <Wallet className="size-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <h2 className="text-lg font-bold text-ink">What can I afford?</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Built on the one-third income rule Kenyan banks apply.
+                      </p>
+                    </div>
+                  </header>
+                  <div className="mt-6 space-y-5">
+                    <MoneyInput
+                      id="fin-income"
+                      label="Monthly net income (KES)"
+                      value={income}
+                      onChange={setIncome}
+                      hint="Take-home pay after tax and deductions"
+                    />
+                    <MoneyInput
+                      id="fin-obligations"
+                      label="Monthly obligations (KES)"
+                      value={obligations}
+                      onChange={setObligations}
+                      hint="Existing loans, cards, support you already commit"
+                    />
+                    <MoneyInput
+                      id="fin-deposit-avail"
+                      label="Deposit available (KES)"
+                      value={depositAvailable}
+                      onChange={setDepositAvailable}
+                      hint="Savings you can put down on day one"
+                    />
+                    <Separator className="bg-line" />
+                    <SliderField
+                      id="fin-afford-rate"
+                      label="Expected interest"
+                      caption={`${affordRate.toFixed(1)}%`}
+                      value={affordRate}
+                      min={5}
+                      max={20}
+                      step={0.1}
+                      onChange={setAffordRate}
+                      ariaValueText={`${affordRate.toFixed(1)} percent per annum`}
+                    />
+                    <SliderField
+                      id="fin-afford-term"
+                      label="Term"
+                      caption={`${affordTerm} years`}
+                      value={affordTerm}
+                      min={5}
+                      max={25}
+                      step={1}
+                      onChange={setAffordTerm}
+                      ariaValueText={`${affordTerm} years`}
+                    />
+                  </div>
+                </div>
+              </Reveal>
+
+              <Reveal delay={0.08} className="lg:col-span-2">
+                <div className="soft-shadow flex h-full flex-col rounded-3xl bg-brand p-6 text-white sm:p-8">
+                  <p className="eyebrow mb-3 text-sun">Your budget</p>
+                  <p
+                    aria-live="polite"
+                    className="font-mono text-4xl font-extrabold leading-none tracking-tight sm:text-5xl"
+                  >
                     {formatKes(Math.round(afford.budget))}
                   </p>
-                  <p className="mt-4 max-w-lg text-sm leading-relaxed text-cream/80 dark:text-foreground/80">
+                  <p className="mt-4 text-sm leading-relaxed text-white/75">
                     With {formatKes(income, { compact: true })} net monthly, lenders cap your
                     repayment near a third of income. After {formatKes(obligations, { compact: true })} of
                     existing obligations you can carry roughly{' '}
-                    <span className="font-semibold text-gold-soft">
+                    <span className="font-bold text-sun">
                       {formatKes(Math.round(afford.maxRepayment))}
                     </span>{' '}
                     per month — supporting a loan of{' '}
-                    <span className="font-semibold text-gold-soft">
+                    <span className="font-bold text-sun">
                       {formatKes(Math.round(afford.maxLoan), { compact: true })}
                     </span>{' '}
                     plus your {formatKes(depositAvailable, { compact: true })} deposit.
                   </p>
-                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="mt-6 flex flex-col gap-3 sm:mt-auto">
                     <Button
                       size="lg"
-                      className="h-11 min-h-11 gold-gradient-bg px-6 font-semibold text-espresso shadow-md hover:opacity-90"
+                      className="btn-sun h-12 min-h-11 rounded-full px-6 font-bold"
                       disabled={!canSearchHomes}
                       onClick={() => setFilterAndGo({ maxPrice: Math.round(afford.budget), minPrice: null }, 'properties')}
                       aria-label={`See matching homes up to ${formatKes(Math.round(afford.budget))}`}
@@ -730,82 +895,50 @@ export default function FinanceView() {
                       See matching homes
                     </Button>
                     {!canSearchHomes && (
-                      <p className="text-xs text-cream/70 dark:text-foreground/70">
+                      <p className="text-xs text-white/70">
                         Budget under KES 5M — raise income, deposit or term to unlock search.
                       </p>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <StatCard
-                  icon={<Wallet className="size-4" aria-hidden="true" />}
-                  label="Max monthly repayment"
-                  value={formatKes(Math.round(afford.maxRepayment))}
-                  sub="⅓ of income − obligations"
-                />
-                <StatCard
-                  icon={<Landmark className="size-4" aria-hidden="true" />}
-                  label="Indicative loan"
-                  value={formatKes(Math.round(afford.maxLoan), { compact: true })}
-                  sub={`${affordRate.toFixed(1)}% over ${affordTerm} yrs`}
-                />
-                <StatCard
-                  icon={<Sparkles className="size-4" aria-hidden="true" />}
-                  label="Your deposit"
-                  value={formatKes(depositAvailable, { compact: true })}
-                  sub="added on top of the loan"
-                />
-              </div>
-
-              <Card className="border-gold/30 bg-sand/50 dark:border-gold/25 dark:bg-espresso-soft/60">
-                <CardContent className="flex items-start gap-3 p-5">
-                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold-deep dark:text-gold">
-                    <Info className="size-4" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold">Kenyan lending context</p>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                      Kenyan banks typically lend 3.5–5× annual income at 11–15% p.a. (CBK).
-                      Mortgage loans above KES 8M may also carry additional risk pricing, and
-                      lenders will want proof of 6+ months of income. Always confirm terms with
-                      your bank — this planner is an estimate, not an offer.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </Reveal>
             </div>
-          </div>
-        </TabsContent>
-      </Tabs>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <StatBlock
+                icon={Wallet}
+                label="Max monthly repayment"
+                value={formatKes(Math.round(afford.maxRepayment))}
+                className="rounded-3xl"
+              />
+              <StatBlock
+                icon={Landmark}
+                label="Indicative loan"
+                value={formatKes(Math.round(afford.maxLoan), { compact: true })}
+                className="rounded-3xl"
+              />
+              <StatBlock
+                icon={Sparkles}
+                label="Your deposit"
+                value={formatKes(depositAvailable, { compact: true })}
+                className="rounded-3xl"
+              />
+            </div>
+
+            <DismissibleNote className="mt-6">
+              <span className="flex items-start gap-2">
+                <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                <span>
+                  <strong className="font-bold">Kenyan lending context:</strong> banks typically lend
+                  3.5–5× annual income at 11–15% p.a. (CBK). Mortgages above KES 8M may carry extra
+                  risk pricing, and lenders want proof of 6+ months of income. Confirm terms with
+                  your bank — this planner is an estimate, not an offer.
+                </span>
+              </span>
+            </DismissibleNote>
+          </TabsContent>
+        </Tabs>
+      </Section>
     </div>
-  )
-}
-
-/* ---------------------------- sub-cards ---------------------------- */
-
-function StatCard({
-  icon,
-  label,
-  value,
-  sub,
-}: {
-  icon: ReactNode
-  label: string
-  value: string
-  sub: string
-}) {
-  return (
-    <Card className="luxury-card border-border/80">
-      <CardContent className="p-4 md:p-5">
-        <div className="mb-2 flex items-center gap-2 text-gold-deep dark:text-gold">
-          {icon}
-          <p className="eyebrow">{label}</p>
-        </div>
-        <p className="font-display text-xl tabular-nums sm:text-2xl">{value}</p>
-        <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{sub}</p>
-      </CardContent>
-    </Card>
   )
 }

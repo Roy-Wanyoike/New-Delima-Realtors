@@ -1,16 +1,23 @@
-# Delima Realtors Platform 2.0
+# Delima Realtors 3.0
 
 A luxury real-estate experience for Nairobi — AI-powered property search, an interactive
 hand-drawn map, live market intelligence, a finance desk and a modern lead CRM, built as a
-single-page Next.js application. Ships with a rich demo dataset: 26 listings across 9 Nairobi
-neighborhoods, 12 months of market statistics per neighborhood, 6 agents and 12 seeded CRM leads.
+single-page Next.js application.
 
-> Status: Sprint 1 complete — all 9 experience areas, 8 API routes and the demo data platform
-> are live. Roadmap and open work: [issue tracker](https://github.com/Roy-Wanyoike/New-Delima-Realtors/issues).
+**3.0 is a ground-up visual revamp**: a modern evergreen + amber design system
+(`#0C3B2E` brand, `#E8A33D` sun) with Plus Jakarta Sans typography, rounded glass surfaces,
+scroll-reveal motion and a light, paper-warm aesthetic — replacing the old serif/gold theme.
+It ships with a rich demo dataset: **42 listings across 9 Nairobi neighborhoods** (27 for sale,
+8 for rent, 3 sold, 4 new developments), 12 months of market statistics per neighborhood,
+6 agents, 16 seeded CRM leads and newsletter subscribers.
+
+> Status: 3.0 UI revamp complete — all 9 experience areas, 8 API routes, the demo data platform
+> and a 75-test green suite are live. Roadmap and open work:
+> [issue tracker](https://github.com/Roy-Wanyoike/New-Delima-Realtors/issues).
 
 ## What is Delima Realtors?
 
-Delima Realtors is a Nairobi brokerage; Platform 2.0 is its digital storefront and back office.
+Delima Realtors is a Nairobi brokerage; 3.0 is its digital storefront and back office.
 It serves two audiences at once:
 
 - **Buyers & renters** browse and compare residences, explore neighborhoods on a map, study
@@ -32,12 +39,12 @@ The nine experience areas (all rendered inside one single-page shell):
 | **AI valuation** | 3-step wizard → estimate range with confidence score, comparable sales and a written narrative. |
 | **Agent CRM (demo)** | Passcode-gated kanban pipeline with drag-and-drop, notes, assignment and analytics. |
 
-App-wide extras: AI concierge widget, dark/light theme, favorites + compare tray, newsletter signup.
+App-wide extras: AI concierge widget, favorites + compare tray, WhatsApp float, newsletter signup.
 
 ## The problem it solves
 
 Legacy brokerage sites are static brochures: listings without real search, no map, no market
-context, and enquiries lost in email inboxes. Platform 2.0 closes that loop — every enquiry path
+context, and enquiries lost in email inboxes. 3.0 closes that loop — every enquiry path
 (property detail, AI valuation, newsletter, concierge) lands in the same scored CRM pipeline, and
 every discovery path (search, filters, map, insights) reads from one live data platform.
 
@@ -76,7 +83,7 @@ template narrative — so the UI never breaks when the model is unavailable.
 | AI | `z-ai-web-dev-sdk` (server-side only) |
 | Validation | Zod 4 |
 | Charts / DnD / motion | Recharts · @dnd-kit · Framer Motion |
-| Icons & fonts | lucide-react · Playfair Display + Manrope via `next/font` |
+| Icons & fonts | lucide-react · Plus Jakarta Sans + Geist Mono via `next/font` |
 | Runtime & package manager | Bun 1.1+ (developed and tested on Bun 1.3) |
 
 ## Project structure
@@ -93,11 +100,11 @@ src/
 │   │   ├── stats/route.ts        # market insights + neighborhood catalogue
 │   │   ├── subscribe/route.ts    # newsletter signup (idempotent)
 │   │   └── valuation/route.ts    # AI estimate → ValuationResult
-│   ├── globals.css               # design tokens: gold/espresso/cream/sand, light + dark
+│   ├── globals.css               # design tokens: evergreen/amber/paper (brand #0C3B2E, sun #E8A33D), light mode
 │   ├── icon.tsx · apple-icon.tsx # file-convention favicons (rendered PNGs)
 │   ├── layout.tsx                # fonts, SEO metadata, OpenGraph/Twitter, JSON-LD
 │   ├── manifest.ts               # PWA web app manifest (served at /manifest.webmanifest)
-│   ├── page.tsx                  # single-page shell, 9-view switch, theme toggle
+│   ├── page.tsx                  # single-page shell, 9-view switch, WhatsApp float
 │   └── robots.ts · sitemap.ts    # /robots.txt and /sitemap.xml metadata routes
 ├── components/
 │   ├── delima/                   # feature views, cards, shell, compare bar, AI widget, SW register
@@ -114,7 +121,7 @@ src/
     └── types.ts                  # shared DTO contracts — every engineer builds against these
 prisma/
 ├── schema.prisma                 # Neighborhood · Agent · Property · Lead · MarketStat · Subscriber
-└── seed.ts                       # demo dataset (clears all tables, then reseeds)
+└── seed.ts                       # enriched demo dataset (clears all tables, then reseeds)
 tests/
 ├── api/                          # route-handler suites (run directly against the SQLite DB)
 ├── unit/                         # pure-function suites (formatting, helpers)
@@ -175,7 +182,7 @@ exception is `GET /api/og`, a `force-static` image endpoint. Base URL: `http://l
 | Method & path | Auth | Purpose |
 | --- | --- | --- |
 | `GET /api/health` | public | Liveness + DB probe → `{ status, service, version, database, timestamp }`; `503` when the DB is unreachable. |
-| `GET /api/properties` | public | All listings as `PropertyDTO[]` (26 in the demo set). |
+| `GET /api/properties` | public | All listings as `PropertyDTO[]` (42 in the demo set). |
 | `GET /api/properties?slug=…` | public | A single residence; `404` when the slug is unknown. |
 | `GET /api/stats` | public | `{ insights, neighborhoods }` — 9 neighborhoods × 12 months of price/volume series. |
 | `GET /api/leads` | **`x-admin-key` header** | Full CRM lead list as `LeadDTO[]`; `401` without a valid key. |

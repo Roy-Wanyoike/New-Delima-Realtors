@@ -1,36 +1,39 @@
 'use client'
 
-// Delima Realtors Platform 2.0 — residence detail (Task 5-b)
+// Delima Realtors 3.0 — Property detail page (REV-3)
+// Premium listing experience: breadcrumb, status/featured pills, gallery with
+// 2×2 thumbnails + lightbox (keyboard arrows), spec strip, two-column body
+// (about / amenities / location) and a sticky action rail (agent, viewing
+// request lead form, brochure, share, favorite, compare). JSON-LD preserved.
+
 import { useEffect, useMemo, useState } from 'react'
 import {
-  ArrowLeft,
+  ArrowRight,
   Bath,
   BedDouble,
-  Building2,
   CalendarClock,
+  CalendarDays,
   Car,
   Check,
   ChevronLeft,
   ChevronRight,
   Download,
-  Eye,
   Heart,
   Home,
   Mail,
+  Map as MapIcon,
   MapPin,
-  Maximize2,
+  Maximize,
   MessageCircle,
   Phone,
-  Ruler,
   Scale,
   Share2,
   Star,
-  Tag,
+  TriangleAlert,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -44,7 +47,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { useProperties } from '@/hooks/use-delima-data'
+import { useInsights, useProperties } from '@/hooks/use-delima-data'
 import { useAppStore } from '@/lib/store'
 import {
   formatKes,
@@ -56,56 +59,37 @@ import {
   typeLabel,
   whatsappLink,
 } from '@/lib/format'
-import type { LucideIcon } from 'lucide-react'
 import type { PropertyDTO, PropertyStatus } from '@/lib/types'
 import { cn, fetchWithTimeout } from '@/lib/utils'
+import { Container, EmptyState, Pill, StatBlock } from './ui-kit'
+import { SmartImage } from './mini-cards'
 import { PropertyCard } from './property-card'
 
-/* ---------- helpers ---------- */
+/* ------------------------------ helpers -------------------------------- */
 
-function statusBadgeClass(status: PropertyStatus): string {
-  switch (status) {
-    case 'FOR_SALE':
-      return 'gold-gradient-bg border-transparent text-espresso'
-    case 'FOR_RENT':
-      return 'border-transparent bg-espresso/80 text-cream dark:text-[#f0e9dc]'
-    case 'NEW_DEVELOPMENT':
-      return 'border-gold/60 bg-background/70 text-gold-deep dark:text-gold'
-    case 'SOLD':
-      return 'border-transparent bg-espresso text-cream dark:text-[#f0e9dc]'
-  }
+const STATUS_TONE: Record<PropertyStatus, 'brand' | 'sun' | 'muted' | 'outline'> = {
+  FOR_SALE: 'brand',
+  FOR_RENT: 'sun',
+  SOLD: 'muted',
+  NEW_DEVELOPMENT: 'outline',
 }
 
-function GoldButton({
-  children,
-  onClick,
-  disabled,
-  className,
-  ariaLabel,
-}: {
-  children: React.ReactNode
-  onClick?: () => void
-  disabled?: boolean
-  className?: string
-  ariaLabel?: string
-}) {
+function Stars({ rating }: { rating: number }) {
+  const full = Math.round(rating)
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      className={cn(
-        'inline-flex h-11 items-center justify-center gap-2 rounded-md px-5 text-sm font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 gold-gradient-bg text-espresso focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        className,
-      )}
-    >
-      {children}
-    </button>
+    <span className="inline-flex items-center gap-0.5" aria-label={`Rated ${rating.toFixed(1)} out of 5`}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <Star
+          key={i}
+          aria-hidden
+          className={cn('size-3.5', i < full ? 'fill-sun text-sun' : 'fill-muted text-line')}
+        />
+      ))}
+    </span>
   )
 }
 
-/* ---------- viewing request dialog ---------- */
+/* ------------------------ viewing request dialog ----------------------- */
 
 interface ViewingForm {
   name: string
@@ -130,9 +114,15 @@ function ViewingDialog({
   const [form, setForm] = useState<ViewingForm>(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
 
+  // Pre-fill the message with the property title each time the dialog opens.
   useEffect(() => {
-    if (open) setForm(EMPTY_FORM)
-  }, [open])
+    if (open) {
+      setForm({
+        ...EMPTY_FORM,
+        message: `Hello, I'd like to arrange a viewing of ${property.title} in ${property.neighborhood}.`,
+      })
+    }
+  }, [open, property.title, property.neighborhood])
 
   const valid =
     form.name.trim().length > 1 &&
@@ -183,9 +173,9 @@ function ViewingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-lg">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-lg rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl md:text-2xl">Request a Private Viewing</DialogTitle>
+          <DialogTitle className="text-xl font-extrabold tracking-tight md:text-2xl">Request a viewing</DialogTitle>
           <DialogDescription>
             {property.title} · {property.neighborhood} — {formatPriceForStatus(property.priceKes, property.status)}
           </DialogDescription>
@@ -200,6 +190,7 @@ function ViewingDialog({
                 onChange={e => set({ name: e.target.value })}
                 placeholder="Amina Wanjiru"
                 autoComplete="name"
+                className="h-11 rounded-xl"
                 required
               />
             </div>
@@ -212,6 +203,7 @@ function ViewingDialog({
                 onChange={e => set({ phone: e.target.value })}
                 placeholder="+254 7…"
                 autoComplete="tel"
+                className="h-11 rounded-xl"
                 required
               />
             </div>
@@ -226,6 +218,7 @@ function ViewingDialog({
                 onChange={e => set({ email: e.target.value })}
                 placeholder="you@example.com"
                 autoComplete="email"
+                className="h-11 rounded-xl"
                 required
               />
             </div>
@@ -237,6 +230,7 @@ function ViewingDialog({
                 min={new Date().toISOString().slice(0, 10)}
                 value={form.date}
                 onChange={e => set({ date: e.target.value })}
+                className="h-11 rounded-xl"
               />
             </div>
           </div>
@@ -248,28 +242,33 @@ function ViewingDialog({
               onChange={e => set({ message: e.target.value })}
               placeholder="Anything our agent should prepare for your visit…"
               rows={3}
+              className="rounded-xl"
             />
           </div>
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="outline" className="h-11" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" className="h-11 rounded-xl" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <GoldButton onClick={submit} disabled={!valid || submitting} ariaLabel="Submit viewing request">
+          <Button
+            onClick={submit}
+            disabled={!valid || submitting}
+            className="btn-sun h-11 rounded-full px-6 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Submit viewing request"
+          >
             {submitting ? 'Sending…' : 'Send request'}
-          </GoldButton>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
 
-/* ---------- gallery ---------- */
+/* ------------------------------- gallery ------------------------------- */
 
 function Gallery({ property }: { property: PropertyDTO }) {
   const [idx, setIdx] = useState(0)
   const [lightbox, setLightbox] = useState(false)
-  const [errors, setErrors] = useState<Record<number, boolean>>({})
   const [lastSlug, setLastSlug] = useState(property.slug)
 
   // Reset gallery state when switching properties (derive during render)
@@ -277,119 +276,131 @@ function Gallery({ property }: { property: PropertyDTO }) {
     setLastSlug(property.slug)
     setIdx(0)
     setLightbox(false)
-    setErrors({})
   }
 
   const images = property.images
   const hasImages = images.length > 0
   const current = hasImages ? images[Math.min(idx, images.length - 1)] : undefined
-  const currentBroken = hasImages && errors[idx]
+  const thumbs = images.slice(0, 4)
 
   const go = (dir: 1 | -1) => {
     if (!hasImages) return
     setIdx(i => (i + dir + images.length) % images.length)
   }
 
+  // Keyboard arrows while the lightbox is open (nice-to-have per spec)
+  useEffect(() => {
+    if (!lightbox) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') go(-1)
+      if (e.key === 'ArrowRight') go(1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightbox, hasImages, images.length])
+
+  const openLightboxAt = (i: number) => {
+    if (!hasImages) return
+    setIdx(Math.min(i, images.length - 1))
+    setLightbox(true)
+  }
+
   return (
-    <section aria-label={`Gallery for ${property.title}`} className="space-y-3">
-      <div className="relative overflow-hidden rounded-xl border bg-sand luxury-shadow dark:bg-espresso-soft">
-        <div className="aspect-[16/10] w-full">
-          {hasImages && current && !currentBroken ? (
-            <img
+    <section aria-label={`Gallery for ${property.title}`}>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {/* main image */}
+        <div className="group relative aspect-[16/10] overflow-hidden rounded-2xl border border-line bg-muted sm:col-span-2 sm:aspect-auto sm:h-full sm:min-h-[22rem]">
+          {hasImages && current ? (
+            <SmartImage
               src={current}
               alt={`${property.title} — image ${idx + 1} of ${images.length}`}
-              loading="lazy"
-              onError={() => setErrors(e => ({ ...e, [idx]: true }))}
-              className="h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-[1.03]"
             />
           ) : (
-            <div
-              aria-hidden
-              className="flex h-full w-full flex-col items-center justify-center gap-3 gold-gradient-bg text-espresso/70"
-            >
+            <div aria-hidden className="flex h-full min-h-56 w-full flex-col items-center justify-center gap-2 bg-brand-soft text-brand">
               <Home className="size-10" />
-              <span className="font-display text-base tracking-wide">Delima Realtors</span>
+              <span className="text-sm font-bold tracking-wide">Delima Realtors</span>
             </div>
+          )}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+
+          {hasImages && (
+            <>
+              <button
+                type="button"
+                onClick={() => openLightboxAt(idx)}
+                aria-label="Open image fullscreen"
+                className="absolute inset-0 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun focus-visible:ring-inset"
+              />
+              <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-brand-deep/80 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
+                {idx + 1} / {images.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => openLightboxAt(idx)}
+                aria-label="View fullscreen"
+                className="absolute bottom-3 right-3 grid size-11 place-items-center rounded-full bg-white/90 text-ink shadow-sm backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
+              >
+                <Maximize className="size-4" aria-hidden />
+              </button>
+            </>
           )}
         </div>
 
-        {hasImages && (
-          <>
-            <button
-              type="button"
-              aria-label="Open image fullscreen"
-              onClick={() => setLightbox(true)}
-              className="absolute inset-0 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-            />
-            <button
-              type="button"
-              aria-label="View fullscreen"
-              onClick={() => setLightbox(true)}
-              className="absolute bottom-3 right-3 flex size-11 items-center justify-center rounded-full border border-white/30 bg-background/70 shadow-sm backdrop-blur-sm transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Maximize2 className="size-4" aria-hidden />
-            </button>
-            <span className="absolute bottom-3 left-3 rounded-full bg-espresso/80 px-3 py-1 text-xs font-medium text-cream dark:text-[#f0e9dc] backdrop-blur-sm">
-              {idx + 1} / {images.length}
-            </span>
-          </>
+        {/* 2×2 thumbnails */}
+        {hasImages && thumbs.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            {thumbs.map((src, i) => (
+              <button
+                key={`${property.slug}-thumb-${i}`}
+                type="button"
+                onClick={() => openLightboxAt(i)}
+                aria-label={`Open image ${i + 1} of ${images.length}`}
+                aria-current={i === idx}
+                className={cn(
+                  'group/thumb relative aspect-[4/3] overflow-hidden rounded-xl border border-line bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun',
+                  i === idx ? 'ring-2 ring-sun ring-offset-1 ring-offset-paper' : 'opacity-85 hover:opacity-100',
+                )}
+              >
+                <SmartImage
+                  src={src}
+                  alt=""
+                  className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover/thumb:scale-105"
+                />
+                {i === 3 && images.length > 5 && (
+                  <span className="absolute inset-0 grid place-items-center bg-brand-deep/65 text-sm font-bold text-white backdrop-blur-[1px]">
+                    +{images.length - 4} photos
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
-      {hasImages && images.length > 1 && (
-        <div className="delima-scroll flex gap-2.5 overflow-x-auto pb-1" role="tablist" aria-label="Gallery thumbnails">
-          {images.map((src, i) => (
-            <button
-              key={`${src.slice(0, 48)}-${i}`}
-              type="button"
-              role="tab"
-              aria-selected={i === idx}
-              aria-label={`Show image ${i + 1}`}
-              onClick={() => setIdx(i)}
-              className={cn(
-                'size-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                i === idx ? 'border-gold ring-2 ring-gold/40' : 'border-transparent opacity-70 hover:opacity-100',
-              )}
-            >
-              {errors[i] ? (
-                <span aria-hidden className="flex size-full items-center justify-center gold-gradient-bg text-espresso">
-                  <Home className="size-5" />
-                </span>
-              ) : (
-                <img
-                  src={src}
-                  alt=""
-                  loading="lazy"
-                  onError={() => setErrors(e => ({ ...e, [i]: true }))}
-                  className="size-full object-cover"
-                />
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-
+      {/* lightbox */}
       <Dialog open={lightbox} onOpenChange={setLightbox}>
         <DialogContent
           aria-label="Fullscreen gallery image"
-          className="w-[calc(100vw-2rem)] max-w-5xl overflow-hidden border-gold/30 bg-espresso p-0 text-cream sm:p-0 dark:bg-espresso-soft"
+          className="w-[calc(100vw-2rem)] max-w-5xl overflow-hidden rounded-2xl border-brand-deep bg-brand-deep p-0 text-white sm:p-0"
         >
           <DialogHeader className="sr-only">
             <DialogTitle>
               {property.title} — image {idx + 1} of {Math.max(images.length, 1)}
             </DialogTitle>
-            <DialogDescription>Fullscreen gallery view</DialogDescription>
+            <DialogDescription>Fullscreen gallery view. Use the arrow keys to navigate.</DialogDescription>
           </DialogHeader>
           <div className="relative">
-            <div className="flex max-h-[78vh] items-center justify-center bg-black/40">
-              {current && !currentBroken ? (
-                <img
+            <div className="flex max-h-[80vh] items-center justify-center bg-black/40">
+              {current ? (
+                <SmartImage
                   src={current}
                   alt={`${property.title} fullscreen — image ${idx + 1}`}
-                  className="max-h-[78vh] w-full object-contain"
+                  eager
+                  className="max-h-[80vh] w-full object-contain"
                 />
               ) : (
-                <div aria-hidden className="flex h-[50vh] w-full items-center justify-center gold-gradient-bg text-espresso/70">
+                <div aria-hidden className="flex h-[50vh] w-full items-center justify-center text-white/70">
                   <Home className="size-10" />
                 </div>
               )}
@@ -400,7 +411,7 @@ function Gallery({ property }: { property: PropertyDTO }) {
                   type="button"
                   aria-label="Previous image"
                   onClick={() => go(-1)}
-                  className="absolute left-3 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-espresso/70 text-cream backdrop-blur-sm transition-colors hover:bg-espresso focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                  className="absolute left-3 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white backdrop-blur transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
                 >
                   <ChevronLeft className="size-5" aria-hidden />
                 </button>
@@ -408,13 +419,13 @@ function Gallery({ property }: { property: PropertyDTO }) {
                   type="button"
                   aria-label="Next image"
                   onClick={() => go(1)}
-                  className="absolute right-3 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-espresso/70 text-cream backdrop-blur-sm transition-colors hover:bg-espresso focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                  className="absolute right-3 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-white backdrop-blur transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
                 >
                   <ChevronRight className="size-5" aria-hidden />
                 </button>
               </>
             )}
-            <span className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-cream backdrop-blur-sm">
+            <span className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
               {idx + 1} / {Math.max(images.length, 1)}
             </span>
           </div>
@@ -424,7 +435,7 @@ function Gallery({ property }: { property: PropertyDTO }) {
   )
 }
 
-/* ---------- JSON-LD structured data (SEO) ---------- */
+/* --------------------- JSON-LD structured data (SEO) ------------------- */
 
 /**
  * Builds a Schema.org JSON-LD object for the property detail page so Google
@@ -487,7 +498,7 @@ function buildJsonLd(p: PropertyDTO): Record<string, unknown> {
   return schema
 }
 
-/* ---------- main ---------- */
+/* -------------------------------- main --------------------------------- */
 
 export default function PropertyDetail() {
   const activeSlug = useAppStore(s => s.activeSlug)
@@ -499,6 +510,7 @@ export default function PropertyDetail() {
   const compare = useAppStore(s => s.compare)
   const toggleCompare = useAppStore(s => s.toggleCompare)
   const { properties, loading, error } = useProperties()
+  const { neighborhoods } = useInsights()
   const { toast } = useToast()
   const [viewingOpen, setViewingOpen] = useState(false)
 
@@ -507,8 +519,14 @@ export default function PropertyDetail() {
     [properties, activeSlug],
   )
 
+  const hood = useMemo(
+    () => (property ? neighborhoods.find(n => n.slug === property.neighborhoodSlug) ?? null : null),
+    [neighborhoods, property],
+  )
+
   const isFav = property ? favorites.includes(property.slug) : false
   const isComp = property ? compare.includes(property.slug) : false
+  const compareFull = !isComp && compare.length >= 3
 
   const similar = useMemo(() => {
     if (!property) return []
@@ -524,110 +542,118 @@ export default function PropertyDetail() {
   /* --- no slug --- */
   if (!activeSlug) {
     return (
-      <StatePanel
-        icon={<Home className="size-8" aria-hidden />}
-        title="No property selected"
-        body="Choose a residence from the collection to see its full story."
-        action={
-          <Button onClick={() => setView('properties')} className="h-11 gap-2 gold-gradient-bg text-espresso hover:opacity-90" style={{ color: 'var(--espresso)' }}>
-            <ArrowLeft className="size-4" aria-hidden />
-            Back to the Collection
-          </Button>
-        }
-      />
+      <Container className="py-20 md:py-28">
+        <EmptyState
+          icon={Home}
+          title="No property selected"
+          description="Choose a residence from the collection to see its full story."
+          className="min-h-72"
+          action={
+            <Button onClick={() => setView('properties')} className="btn-sun h-11 gap-2 rounded-full px-6 text-sm font-bold">
+              <ArrowRight className="size-4" aria-hidden />
+              Browse properties
+            </Button>
+          }
+        />
+      </Container>
     )
   }
 
   /* --- loading --- */
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 lg:px-8" aria-busy="true" aria-label="Loading residence">
-        <Skeleton className="h-4 w-64" />
-        <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_380px]">
-          <div className="space-y-6">
-            <Skeleton className="aspect-[16/10] w-full rounded-xl" />
-            <Skeleton className="h-5 w-3/4" />
-            <Skeleton className="h-5 w-2/3" />
-            <Skeleton className="h-24 w-full rounded-xl" />
-          </div>
-          <div className="space-y-4">
-            <Skeleton className="h-40 w-full rounded-xl" />
-            <Skeleton className="h-48 w-full rounded-xl" />
+      <Container className="py-8 md:py-10" >
+        <div aria-busy="true" aria-label="Loading residence">
+          <Skeleton className="h-4 w-64" />
+          <div className="mt-6 grid gap-10 lg:grid-cols-3">
+            <div className="space-y-8 lg:col-span-2">
+              <Skeleton className="h-[22rem] w-full rounded-2xl" />
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-40 w-full rounded-2xl" />
+            </div>
+            <div className="space-y-4">
+              <Skeleton className="h-64 w-full rounded-2xl" />
+              <Skeleton className="h-56 w-full rounded-2xl" />
+            </div>
           </div>
         </div>
-      </div>
+      </Container>
     )
   }
 
   /* --- error --- */
   if (error) {
     return (
-      <StatePanel
-        icon={<Tag className="size-8" aria-hidden />}
-        title="The listing desk is unreachable"
-        body={error}
-        action={
-          <Button variant="outline" onClick={() => window.location.reload()} className="h-11 gap-2">
-            <ArrowLeft className="size-4" aria-hidden />
-            Try again
-          </Button>
-        }
-      />
+      <Container className="py-20 md:py-28">
+        <EmptyState
+          icon={TriangleAlert}
+          title="The listing desk is unreachable"
+          description={error}
+          className="min-h-72"
+          action={
+            <Button variant="outline" onClick={() => window.location.reload()} className="h-11 gap-2 rounded-xl">
+              Try again
+            </Button>
+          }
+        />
+      </Container>
     )
   }
 
   /* --- not found --- */
   if (!property) {
     return (
-      <StatePanel
-        icon={<Home className="size-8" aria-hidden />}
-        title="This residence is no longer listed"
-        body="It may have found its new owner. The rest of the collection awaits."
-        action={
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button onClick={() => setView('properties')} className="h-11 gap-2 gold-gradient-bg text-espresso hover:opacity-90" style={{ color: 'var(--espresso)' }}>
-              Browse the Collection
-            </Button>
-            <Button variant="outline" onClick={goHome} className="h-11">
-              Return Home
-            </Button>
-          </div>
-        }
-      />
+      <Container className="py-20 md:py-28">
+        <EmptyState
+          icon={Home}
+          title="This listing is no longer available"
+          description="It may have found its new owner. The rest of the collection awaits."
+          className="min-h-72"
+          action={
+            <div className="flex flex-wrap justify-center gap-2.5">
+              <Button onClick={() => setView('properties')} className="btn-sun h-11 rounded-full px-6 text-sm font-bold">
+                Browse properties
+              </Button>
+              <Button variant="outline" onClick={goHome} className="h-11 rounded-xl">
+                Return home
+              </Button>
+            </div>
+          }
+        />
+      </Container>
     )
   }
 
   const agent = property.agent
   const waText = `Hi Delima, I'm interested in ${property.title} (${formatKes(property.priceKes)})`
 
-  const specs: Array<{ icon: LucideIcon; label: string; value: string }> = [
-    { icon: BedDouble, label: 'Bedrooms', value: String(property.bedrooms) },
-    { icon: Bath, label: 'Bathrooms', value: String(property.bathrooms) },
-    { icon: Ruler, label: 'Size', value: formatSqm(property.sqm) },
-    { icon: CalendarClock, label: 'Year Built', value: String(property.yearBuilt) },
-    { icon: Car, label: 'Parking', value: `${property.parking} spaces` },
-    { icon: Building2, label: 'Type', value: typeLabel[property.type] },
-    { icon: Tag, label: 'Status', value: statusLabel[property.status] },
+  const specs: Array<{ icon: LucideIcon; value: string; label: string }> = [
+    { icon: BedDouble, value: property.bedrooms === 0 ? 'Studio' : String(property.bedrooms), label: 'Bedrooms' },
+    { icon: Bath, value: String(property.bathrooms), label: 'Bathrooms' },
+    { icon: Maximize, value: formatSqm(property.sqm), label: 'Size' },
+    { icon: Car, value: `${property.parking}`, label: 'Parking bays' },
+    { icon: CalendarDays, value: property.yearBuilt > 0 ? String(property.yearBuilt) : '—', label: 'Year built' },
   ]
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6 md:py-10 lg:px-8">
+    <Container className="py-6 md:py-10">
       {jsonLd && (
         <script
           key="jsonld"
           type="application/ld+json"
-          aria-hidden="true"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd, null, 0) }}
         />
       )}
-      {/* Breadcrumbs + back */}
+
+      {/* Breadcrumb */}
       <nav aria-label="Breadcrumb">
         <ol className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
           <li>
             <button
               type="button"
               onClick={goHome}
-              className="rounded px-1 py-0.5 transition-colors hover:text-gold-deep dark:hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded px-1 py-0.5 transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Home
             </button>
@@ -638,196 +664,173 @@ export default function PropertyDetail() {
           <li>
             <button
               type="button"
-              onClick={() => setFilterAndGo({ neighborhood: property.neighborhoodSlug }, 'properties')}
-              className="rounded px-1 py-0.5 transition-colors hover:text-gold-deep dark:hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => setView('properties')}
+              className="rounded px-1 py-0.5 transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {property.neighborhood}
+              Properties
             </button>
           </li>
           <li aria-hidden>
             <ChevronRight className="size-3.5" />
           </li>
-          <li aria-current="page" className="max-w-[16rem] truncate px-1 font-medium text-foreground md:max-w-xs">
+          <li aria-current="page" className="max-w-[13rem] truncate px-1 font-semibold text-ink sm:max-w-xs">
             {property.title}
           </li>
         </ol>
       </nav>
 
-      <div className="mt-2">
-        <Button
-          variant="ghost"
-          onClick={() => setView('properties')}
-          className="-ml-2 h-11 gap-2 text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" aria-hidden />
-          Back to the Collection
-        </Button>
-      </div>
-
       {/* Title block */}
-      <section aria-labelledby="property-title" className="mt-4">
-        <p className="eyebrow">{property.neighborhood} · {typeLabel[property.type]}</p>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+      <section aria-labelledby="property-title" className="mt-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Pill tone={STATUS_TONE[property.status]}>{statusLabel[property.status]}</Pill>
+          {property.featured && (
+            <Pill tone="outline" className="border-sun/60 bg-sun-soft text-sun-deep">
+              <Star className="size-3 fill-sun text-sun" aria-hidden />
+              Featured
+            </Pill>
+          )}
+          <Pill tone="outline">{typeLabel[property.type]}</Pill>
+        </div>
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
           <div className="min-w-0">
-            <h1 id="property-title" className="gold-underline font-display text-3xl leading-tight md:text-5xl">
+            <h1 id="property-title" className="text-balance text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
               {property.title}
             </h1>
-            <p className="mt-4 text-2xl font-bold text-gold-deep dark:text-gold md:text-3xl">
-              {formatPriceForStatus(property.priceKes, property.status)}
+            <p className="mt-2.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <MapPin className="size-4 shrink-0 text-sun-deep" aria-hidden />
+              {property.address} · {property.neighborhood}, Nairobi
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className={cn('px-3 py-1 text-xs font-semibold uppercase tracking-wider', statusBadgeClass(property.status))}>
-              {statusLabel[property.status]}
-            </Badge>
-            <Badge variant="outline" className="px-3 py-1 text-xs">{typeLabel[property.type]}</Badge>
-            {property.featured && (
-              <Badge className="border-transparent bg-gold px-3 py-1 text-xs font-semibold uppercase tracking-wider text-espresso">
-                ★ Featured
-              </Badge>
-            )}
+          <div className="sm:text-right">
+            <p className="text-3xl font-extrabold tracking-tight text-brand">
+              {formatPriceForStatus(property.priceKes, property.status)}
+            </p>
+            <p className="mt-1.5 text-xs font-medium text-muted-foreground">
+              Listed {formatDate(property.createdAt)} · {formatNumber(property.views)} views
+              {' · '}
+              <Star className="-mt-0.5 inline size-3.5 fill-sun text-sun" aria-hidden />
+              {' '}{property.rating.toFixed(1)}
+            </p>
           </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1.5" aria-label={`Rated ${property.rating.toFixed(1)} out of 5`}>
-            <Star className="size-4 fill-gold text-gold" aria-hidden />
-            {property.rating.toFixed(1)}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Eye className="size-4" aria-hidden />
-            {formatNumber(property.views)} views
-          </span>
-          <span className="flex items-center gap-1.5">
-            <MapPin className="size-4" aria-hidden />
-            {property.address}
-          </span>
-          <span>· Listed {formatDate(property.createdAt)}</span>
         </div>
       </section>
 
+      {/* Spec strip */}
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" aria-label="Key specifications">
+        {specs.map(spec => (
+          <StatBlock key={spec.label} icon={spec.icon} value={spec.value} label={spec.label} />
+        ))}
+      </div>
+
       {/* Main layout */}
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="mt-10 grid gap-10 lg:grid-cols-3">
         {/* Left column */}
-        <div className="min-w-0 space-y-8">
+        <div className="min-w-0 space-y-12 lg:col-span-2">
           <Gallery property={property} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display text-xl">Residence at a Glance</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {specs.map(spec => (
-                <div
-                  key={spec.label}
-                  className="flex flex-col gap-1 rounded-lg border bg-background/50 p-3.5"
-                >
-                  <spec.icon className="size-4.5 text-gold-deep dark:text-gold" aria-hidden />
-                  <span className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {spec.label}
-                  </span>
-                  <span className="text-sm font-semibold">{spec.value}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
           <section aria-labelledby="about-heading">
-            <h2 id="about-heading" className="font-display text-xl md:text-2xl">
-              About this residence
+            <h2 id="about-heading" className="text-2xl font-extrabold tracking-tight text-ink">
+              About this home
             </h2>
-            <div className="mt-3 space-y-4 leading-7 text-foreground/85">
-              {property.description.split(/\n{2,}/).map((para, i) => (
-                <p key={i}>{para}</p>
-              ))}
-            </div>
+            <p className="mt-4 whitespace-pre-line text-[15px] leading-7 text-foreground/80">
+              {property.description}
+            </p>
           </section>
 
           {property.amenities.length > 0 && (
             <section aria-labelledby="amenities-heading">
-              <h2 id="amenities-heading" className="font-display text-xl md:text-2xl">
-                Amenities &amp; finishes
+              <h2 id="amenities-heading" className="text-2xl font-extrabold tracking-tight text-ink">
+                Amenities &amp; features
               </h2>
-              <ul className="mt-3 flex flex-wrap gap-2" aria-label="Amenities">
+              <ul className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2" aria-label="Amenities">
                 {property.amenities.map(a => (
-                  <li key={a}>
-                    <Badge variant="outline" className="gap-1.5 px-3 py-1.5 text-[13px] font-normal">
-                      <Check className="size-3.5 text-gold-deep dark:text-gold" aria-hidden />
-                      {a}
-                    </Badge>
+                  <li
+                    key={a}
+                    className="flex items-center gap-2.5 rounded-xl bg-brand-soft px-3.5 py-2.5 text-sm font-medium text-brand"
+                  >
+                    <Check className="size-4 shrink-0" aria-hidden />
+                    {a}
                   </li>
                 ))}
               </ul>
             </section>
           )}
+
+          <section aria-labelledby="location-heading">
+            <h2 id="location-heading" className="text-2xl font-extrabold tracking-tight text-ink">
+              Location &amp; neighbourhood
+            </h2>
+            <div className="card-modern mt-4 overflow-hidden">
+              <div className="relative h-44 sm:h-56">
+                <SmartImage
+                  src={hood?.image}
+                  alt={`${property.neighborhood}, Nairobi`}
+                  fallbackLabel={property.neighborhood}
+                  className="absolute inset-0 h-full w-full"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-brand-deep/85 via-brand-deep/20 to-transparent" />
+                <p className="absolute bottom-3.5 left-5 flex items-center gap-1.5 text-lg font-bold text-white">
+                  <MapPin className="size-4.5 text-sun" aria-hidden />
+                  {property.neighborhood}
+                </p>
+              </div>
+              <div className="p-5 sm:p-6">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  {hood?.description ?? `Discover more homes in ${property.neighborhood}, one of Nairobi's most sought-after addresses.`}
+                </p>
+                {hood?.highlights && hood.highlights.length > 0 && (
+                  <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Neighbourhood highlights">
+                    {hood.highlights.slice(0, 4).map(h => (
+                      <li
+                        key={h}
+                        className="rounded-full border border-line bg-background px-2.5 py-1 text-xs font-semibold text-muted-foreground"
+                      >
+                        {h}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="mt-4 font-mono text-xs text-muted-foreground">
+                  {Math.abs(property.lat).toFixed(5)}° S · {Math.abs(property.lng).toFixed(5)}° E · {property.address}
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2.5">
+                  <Button
+                    onClick={() => setView('map')}
+                    className="btn-sun h-11 gap-2 rounded-full px-5 text-sm font-bold"
+                    aria-label={`Explore ${property.neighborhood} on the map`}
+                  >
+                    <MapIcon className="size-4" aria-hidden />
+                    Explore on map
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setFilterAndGo({ neighborhood: property.neighborhoodSlug }, 'properties')}
+                    className="h-11 gap-2 rounded-xl"
+                  >
+                    More homes in {property.neighborhood}
+                    <ArrowRight className="size-4" aria-hidden />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
 
-        {/* Right column */}
-        <aside className="space-y-6 self-start lg:sticky lg:top-24">
-          {/* Actions card */}
-          <Card className="border-gold/30">
-            <CardContent className="flex flex-col gap-3 p-5">
-              <GoldButton
-                className="w-full"
+        {/* Right rail */}
+        <aside className="self-start lg:sticky lg:top-24">
+          <div className="space-y-5">
+            {/* Action card */}
+            <div className="card-modern space-y-3 p-5">
+              <Button
                 onClick={() => setViewingOpen(true)}
-                ariaLabel={`Request a viewing of ${property.title}`}
+                className="btn-sun h-12 w-full gap-2 rounded-full text-sm font-bold"
+                aria-label={`Request a viewing of ${property.title}`}
               >
                 <CalendarClock className="size-4" aria-hidden />
-                Request Viewing
-              </GoldButton>
+                Request a viewing
+              </Button>
               <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="h-11 gap-2" asChild>
-                  <a
-                    href={whatsappLink(agent.phone, waText)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`WhatsApp ${agent.name} about ${property.title}`}
-                  >
-                    <MessageCircle className="size-4" aria-hidden />
-                    WhatsApp
-                  </a>
-                </Button>
-                <Button variant="outline" className="h-11 gap-2" asChild>
-                  <a href={`tel:${agent.phone}`} aria-label={`Call ${agent.name}`}>
-                    <Phone className="size-4" aria-hidden />
-                    Call agent
-                  </a>
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <Button
-                  variant="outline"
-                  aria-pressed={isFav}
-                  onClick={() => {
-                    toggleFavorite(property.slug)
-                    toast({
-                      title: isFav ? 'Removed from saved' : 'Saved to your collection',
-                      description: isFav
-                        ? `${property.title} was removed from your saved homes.`
-                        : `${property.title} now lives in your saved homes.`,
-                    })
-                  }}
-                  className={cn('h-11 gap-2', isFav && 'border-gold/60 text-gold-deep dark:text-gold')}
-                >
-                  <Heart className={cn('size-4', isFav && 'fill-gold text-gold')} aria-hidden />
-                  {isFav ? 'Saved' : 'Save'}
-                </Button>
-                <Button
-                  variant="outline"
-                  aria-pressed={isComp}
-                  onClick={() => toggleCompare(property.slug)}
-                  className={cn('h-11 gap-2', isComp && 'gold-gradient-bg border-transparent text-espresso')}
-                  style={isComp ? { color: 'var(--espresso)' } : undefined}
-                >
-                  <Scale className="size-4" aria-hidden />
-                  {isComp ? 'Comparing' : 'Compare'}
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  className="h-11 gap-2"
-                  asChild
-                >
+                <Button variant="outline" className="h-11 gap-2 rounded-xl" asChild>
                   <a
                     href={`/api/properties/${property.slug}/brochure?print=1`}
                     target="_blank"
@@ -840,9 +843,8 @@ export default function PropertyDetail() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-11 gap-2"
-                  onClick={async (e) => {
-                    e.preventDefault()
+                  className="h-11 gap-2 rounded-xl"
+                  onClick={async () => {
                     const shareUrl = `https://delima.co.ke/property/${property.slug}`
                     const shareText = `Check out ${property.title} on Delima Realtors`
                     try {
@@ -862,93 +864,125 @@ export default function PropertyDetail() {
                   Share
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  aria-pressed={isFav}
+                  onClick={() => {
+                    toggleFavorite(property.slug)
+                    toast({
+                      title: isFav ? 'Removed from saved' : 'Saved to your collection',
+                      description: isFav
+                        ? `${property.title} was removed from your saved homes.`
+                        : `${property.title} now lives in your saved homes.`,
+                    })
+                  }}
+                  className={cn(
+                    'h-11 gap-2 rounded-xl',
+                    isFav && 'border-sun/60 bg-sun-soft text-sun-deep hover:bg-sun-soft',
+                  )}
+                >
+                  <Heart className={cn('size-4', isFav && 'fill-current')} aria-hidden />
+                  {isFav ? 'Saved' : 'Save'}
+                </Button>
+                <Button
+                  variant="outline"
+                  aria-pressed={isComp}
+                  disabled={compareFull}
+                  title={compareFull ? 'Compare holds up to 3 homes' : undefined}
+                  onClick={() => toggleCompare(property.slug)}
+                  className={cn(
+                    'h-11 gap-2 rounded-xl',
+                    isComp && 'border-brand/40 bg-brand-soft text-brand hover:bg-brand-soft',
+                  )}
+                >
+                  <Scale className="size-4" aria-hidden />
+                  {isComp ? 'Comparing' : 'Compare'}
+                </Button>
+              </div>
+            </div>
 
-          {/* Agent card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display text-lg">Your Private Agent</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            {/* Agent card */}
+            <div className="card-modern p-5">
               <div className="flex items-center gap-3.5">
-                <Avatar className="size-14 border border-gold/40">
+                <Avatar className="size-14 border border-line">
                   <AvatarImage src={agent.photo} alt={agent.name} />
-                  <AvatarFallback className="gold-gradient-bg text-espresso">
+                  <AvatarFallback className="bg-brand text-sm font-bold text-white">
                     {agent.name.split(' ').map(w => w[0]).slice(0, 2).join('')}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <p className="font-display text-lg leading-tight">{agent.name}</p>
+                  <p className="text-base font-extrabold tracking-tight text-ink">{agent.name}</p>
                   <p className="text-sm text-muted-foreground">{agent.title}</p>
-                  <p className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
-                    <Star className="size-3.5 fill-gold text-gold" aria-hidden />
-                    {agent.rating.toFixed(1)}
-                  </p>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <Stars rating={agent.rating} />
+                    <span className="text-xs font-semibold text-muted-foreground">{agent.rating.toFixed(1)}</span>
+                  </div>
                 </div>
               </div>
               {agent.specialties.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="mt-3.5 flex flex-wrap gap-1.5">
                   {agent.specialties.map(s => (
-                    <Badge key={s} variant="outline" className="text-xs font-normal">
+                    <span key={s} className="rounded-full border border-line bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">
                       {s}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               )}
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="size-11 rounded-full" asChild>
+              <Button asChild className="mt-4 h-11 w-full gap-2 rounded-xl bg-[#1faa53] text-white hover:bg-[#189248]">
+                <a
+                  href={whatsappLink(agent.phone, waText)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`WhatsApp ${agent.name} about ${property.title}`}
+                >
+                  <MessageCircle className="size-4" aria-hidden />
+                  WhatsApp {agent.name.split(' ')[0]}
+                </a>
+              </Button>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Button variant="outline" className="h-11 gap-2 rounded-xl" asChild>
                   <a href={`tel:${agent.phone}`} aria-label={`Call ${agent.name} on ${agent.phone}`}>
                     <Phone className="size-4" aria-hidden />
+                    Call
                   </a>
                 </Button>
-                <Button variant="ghost" size="icon" className="size-11 rounded-full" asChild>
+                <Button variant="outline" className="h-11 gap-2 rounded-xl" asChild>
                   <a href={`mailto:${agent.email}`} aria-label={`Email ${agent.name}`}>
                     <Mail className="size-4" aria-hidden />
+                    Email
                   </a>
                 </Button>
-                <span className="ml-1 min-w-0 truncate text-sm text-muted-foreground">{agent.phone}</span>
               </div>
-            </CardContent>
-          </Card>
+              <p className="mt-2.5 text-center font-mono text-xs text-muted-foreground">{agent.phone}</p>
+            </div>
 
-          {/* Location panel (static — interactive map lives in Map view) */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display text-lg">Location</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2.5">
-              <div className="flex items-start gap-2.5">
-                <MapPin className="mt-0.5 size-4 shrink-0 text-gold-deep dark:text-gold" aria-hidden />
-                <div>
-                  <p className="text-sm font-medium">{property.address}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {property.neighborhood}, Nairobi
-                  </p>
-                </div>
-              </div>
-              <p className="font-mono text-xs text-muted-foreground">
-                {property.lat.toFixed(5)}° S · {Math.abs(property.lng).toFixed(5)}° E
+            {/* Valuation cross-link */}
+            <div className="rounded-2xl border border-sun/40 bg-sun-soft p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-sun-deep">Own a home?</p>
+              <p className="mt-1 text-sm leading-5 text-ink/80">
+                Thinking of selling or letting? Get a free, data-backed valuation.
               </p>
-              <p className="text-xs italic text-muted-foreground">
-                Explore the interactive map in the Map view.
-              </p>
-            </CardContent>
-          </Card>
+              <Button
+                variant="ghost"
+                onClick={() => setView('valuation')}
+                className="-ml-2 mt-1 h-11 gap-1.5 rounded-xl text-sun-deep hover:bg-sun/20 hover:text-sun-deep"
+              >
+                Free valuation
+                <ArrowRight className="size-4" aria-hidden />
+              </Button>
+            </div>
+          </div>
         </aside>
       </div>
 
       {/* Similar homes */}
       {similar.length > 0 && (
-        <section aria-labelledby="similar-heading" className="mt-14">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="eyebrow">Keep exploring</p>
-              <h2 id="similar-heading" className="gold-underline mt-1 font-display text-2xl md:text-3xl">
-                Similar homes in {property.neighborhood}
-              </h2>
-            </div>
-          </div>
+        <section aria-labelledby="similar-heading" className="mt-16">
+          <p className="eyebrow">Keep exploring</p>
+          <h2 id="similar-heading" className="mt-1 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
+            Similar homes in {property.neighborhood}
+          </h2>
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {similar.map(p => (
               <PropertyCard key={p.slug} property={p} />
@@ -958,33 +992,6 @@ export default function PropertyDetail() {
       )}
 
       <ViewingDialog property={property} open={viewingOpen} onOpenChange={setViewingOpen} />
-    </div>
-  )
-}
-
-/* ---------- shared state panels ---------- */
-
-function StatePanel({
-  icon,
-  title,
-  body,
-  action,
-}: {
-  icon: React.ReactNode
-  title: string
-  body: string
-  action: React.ReactNode
-}) {
-  return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-5 px-4 py-24 text-center md:px-6 lg:px-8">
-      <div aria-hidden className="flex size-16 items-center justify-center rounded-full gold-gradient-bg text-espresso">
-        {icon}
-      </div>
-      <div>
-        <h2 className="font-display text-2xl md:text-3xl">{title}</h2>
-        <p className="mt-2 max-w-md text-sm text-muted-foreground">{body}</p>
-      </div>
-      {action}
-    </div>
+    </Container>
   )
 }

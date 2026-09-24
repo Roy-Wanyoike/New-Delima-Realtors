@@ -1,67 +1,51 @@
+// Delima Realtors 3.0 — modern property card
+// FROZEN CONTRACT:
+//   export function PropertyCard({ property, active, onHover, className })
+//   export function PropertyCardSkeleton({ className })
+// REV-1 (shell agent) owns this file and may refine visuals but MUST keep
+// these export names and props. Consumers: properties-view, property-detail.
+
 'use client'
 
-// Delima Realtors Platform 2.0 — luxury listing card (Task 5-b)
-import { useState } from 'react'
-import { ArrowUpRight, Bath, BedDouble, Heart, Home, MapPin, Ruler, Scale, Share2, Star } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useToast } from '@/hooks/use-toast'
+import * as React from 'react'
+import Image from 'next/image'
+import { Bath, BedDouble, Heart, MapPin, Maximize, Star } from 'lucide-react'
+import type { PropertyDTO } from '@/lib/types'
+import { formatPriceForStatus, statusLabel, typeLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/lib/store'
-import { formatPriceForStatus, formatSqm, statusLabel } from '@/lib/format'
-import type { PropertyDTO, PropertyStatus } from '@/lib/types'
 
-function statusBadgeClass(status: PropertyStatus): string {
-  switch (status) {
-    case 'FOR_SALE':
-      return 'gold-gradient-bg border-transparent text-espresso'
-    case 'FOR_RENT':
-      return 'border-transparent bg-espresso/80 text-cream dark:text-[#f0e9dc] backdrop-blur-sm'
-    case 'NEW_DEVELOPMENT':
-      return 'border-gold/60 bg-background/70 text-gold-deep backdrop-blur-sm dark:text-gold'
-    case 'SOLD':
-      return 'border-transparent bg-espresso text-cream dark:text-[#f0e9dc]'
-  }
+const statusChip: Record<PropertyDTO['status'], { cls: string; dot: string }> = {
+  FOR_SALE: { cls: 'bg-brand text-white', dot: 'bg-emerald-300' },
+  FOR_RENT: { cls: 'bg-sun text-brand-deep', dot: 'bg-amber-700' },
+  SOLD: { cls: 'bg-stone-600 text-white', dot: 'bg-stone-300' },
+  NEW_DEVELOPMENT: { cls: 'bg-white text-brand border border-line', dot: 'bg-sun' },
 }
 
-export function PropertyCard({ property, compact = false }: { property: PropertyDTO; compact?: boolean }) {
+export function PropertyCard({
+  property,
+  active = false,
+  onHover,
+  className,
+}: {
+  property: PropertyDTO
+  /** highlighted state (map ↔ list sync) */
+  active?: boolean
+  onHover?: (slug: string | null) => void
+  className?: string
+}) {
   const openProperty = useAppStore(s => s.openProperty)
-  const setHoveredSlug = useAppStore(s => s.setHoveredSlug)
-  const favorites = useAppStore(s => s.favorites)
   const toggleFavorite = useAppStore(s => s.toggleFavorite)
-  const compare = useAppStore(s => s.compare)
-  const toggleCompare = useAppStore(s => s.toggleCompare)
+  const isFavorite = useAppStore(s => s.isFavorite(property.slug))
+  const cover = property.images?.[0]
 
-  const isFav = favorites.includes(property.slug)
-  const isComp = compare.includes(property.slug)
-
-  const { toast } = useToast()
-
-  const [imgError, setImgError] = useState(false)
-  const img = property.images.length > 0 ? property.images[0] : undefined
-
-  async function handleShare(e: React.MouseEvent<HTMLButtonElement>) {
-    e.preventDefault()
-    e.stopPropagation()
-    const shareUrl = `https://delima.co.ke/property/${property.slug}`
-    const text = `Check out ${property.title} — ${formatPriceForStatus(property.priceKes, property.status)} on Delima Realtors`
-    try {
-      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-        await navigator.share({ title: property.title, text, url: shareUrl })
-      } else if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl)
-        toast({ title: 'Link copied', description: 'Share it with anyone looking for a Nairobi home.' })
-      }
-    } catch {
-      // User dismissed the share sheet (AbortError) or the clipboard write failed — fail silently
-    }
-  }
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
 
   return (
     <article
-      role="button"
+      role="link"
       tabIndex={0}
-      aria-label={`View ${property.title} in ${property.neighborhood}`}
+      aria-label={`${property.title} — ${formatPriceForStatus(property.priceKes, property.status)}`}
       onClick={() => openProperty(property.slug)}
       onKeyDown={e => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -69,137 +53,119 @@ export function PropertyCard({ property, compact = false }: { property: Property
           openProperty(property.slug)
         }
       }}
-      onMouseEnter={() => setHoveredSlug(property.slug)}
-      onMouseLeave={() => setHoveredSlug(null)}
-      className="luxury-card group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border bg-card text-card-foreground luxury-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring print:break-inside-avoid print:border-espresso/30 print:bg-white print:text-espresso print:shadow-none"
+      onMouseEnter={() => onHover?.(property.slug)}
+      onMouseLeave={() => onHover?.(null)}
+      className={cn(
+        'card-modern group cursor-pointer overflow-hidden focus-visible:outline-2 focus-visible:outline-sun',
+        active && 'ring-2 ring-sun ring-offset-2 ring-offset-paper',
+        className,
+      )}
     >
-      {/* Image */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-sand dark:bg-espresso-soft print:h-32">
-        {img && !imgError ? (
-          <img
-            src={img}
+      {/* media */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+        {cover ? (
+          <Image
+            src={cover}
             alt={property.title}
-            loading="lazy"
-            onError={() => setImgError(true)}
-            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div
-            aria-hidden
-            className="flex h-full w-full flex-col items-center justify-center gap-2 gold-gradient-bg text-espresso/70"
-          >
-            <Home className="size-8" />
-            <span className="font-display text-sm tracking-wide">Delima Realtors</span>
-          </div>
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No photo</div>
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
 
-        {/* Status + featured badges */}
-        <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
-          <Badge
-            className={cn('px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm', statusBadgeClass(property.status))}
-          >
-            {statusLabel[property.status]}
-          </Badge>
-          {property.featured && (
-            <Badge className="border-transparent bg-gold px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-espresso shadow-sm">
-              ★ Featured
-            </Badge>
+        {/* status chip */}
+        <span
+          className={cn(
+            'absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide',
+            statusChip[property.status].cls,
           )}
-        </div>
+        >
+          <span className={cn('size-1.5 rounded-full', statusChip[property.status].dot)} />
+          {statusLabel[property.status]}
+        </span>
 
-        {/* Favorite + compare actions */}
-        <div className="absolute right-3 top-3 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
-          <button
-            type="button"
-            aria-label={isFav ? `Remove ${property.title} from saved homes` : `Save ${property.title}`}
-            aria-pressed={isFav}
-            onClick={() => toggleFavorite(property.slug)}
-            className={cn(
-              'flex size-11 items-center justify-center rounded-full border shadow-sm backdrop-blur-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring print:hidden',
-              isFav ? 'border-gold/60 bg-card/90 text-gold-deep dark:text-gold' : 'border-white/30 bg-background/70 hover:bg-background',
-            )}
-          >
-            <Heart className={cn('size-5', isFav && 'fill-gold text-gold')} aria-hidden />
-          </button>
-          <button
-            type="button"
-            aria-label={isComp ? `Remove ${property.title} from comparison` : `Add ${property.title} to comparison`}
-            aria-pressed={isComp}
-            onClick={() => toggleCompare(property.slug)}
-            className={cn(
-              'flex size-11 items-center justify-center rounded-full border shadow-sm backdrop-blur-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring print:hidden',
-              isComp ? 'gold-gradient-bg border-transparent text-espresso' : 'border-white/30 bg-background/70 hover:bg-background',
-            )}
-          >
-            <Scale className="size-5" aria-hidden />
-          </button>
-          <button
-            type="button"
-            aria-label={`Share ${property.title}`}
-            onClick={handleShare}
-            className="flex size-11 items-center justify-center rounded-full border border-white/30 bg-background/70 shadow-sm backdrop-blur-sm transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring print:hidden"
-          >
-            <Share2 className="size-5" aria-hidden />
-          </button>
+        {/* favorite */}
+        <button
+          onClick={e => {
+            stop(e)
+            toggleFavorite(property.slug)
+          }}
+          aria-label={isFavorite ? 'Remove from favorites' : 'Save to favorites'}
+          aria-pressed={isFavorite}
+          className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white/90 text-stone-700 shadow-sm backdrop-blur transition hover:scale-110 hover:text-rose-600"
+        >
+          <Heart className={cn('size-4', isFavorite && 'fill-rose-600 text-rose-600')} />
+        </button>
+
+        {/* price on media */}
+        <div className="absolute bottom-3 left-3 rounded-xl bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur">
+          <span className="text-base sm:text-lg font-extrabold tracking-tight text-brand">
+            {formatPriceForStatus(property.priceKes, property.status)}
+          </span>
         </div>
       </div>
 
-      {/* Body */}
-      <div className={cn('flex flex-1 flex-col gap-2', compact ? 'p-3' : 'p-4')}>
-        <div className="flex items-center gap-1.5">
-          <MapPin className="size-3.5 shrink-0 text-gold-deep dark:text-gold" aria-hidden />
-          <span className="eyebrow truncate">{property.neighborhood}</span>
+      {/* body */}
+      <div className="space-y-3 p-4 sm:p-5">
+        <div>
+          <h3 className="line-clamp-1 text-[15px] sm:text-base font-bold text-ink group-hover:text-brand transition-colors">
+            {property.title}
+          </h3>
+          <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+            <MapPin className="size-3.5 shrink-0 text-sun-deep" />
+            <span className="truncate">{property.neighborhood}, Nairobi</span>
+          </p>
         </div>
-        <h3 className={cn('font-display leading-snug', compact ? 'text-base' : 'text-lg')}>
-          {property.title}
-        </h3>
-        <p className={cn('font-bold text-gold-deep dark:text-gold', compact ? 'text-base' : 'text-lg')}>
-          {formatPriceForStatus(property.priceKes, property.status)}
-        </p>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <BedDouble className="size-4" aria-hidden />
-            {property.bedrooms} bd
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-medium text-stone-600">
+          <span className="inline-flex items-center gap-1.5">
+            <BedDouble className="size-4 text-brand" />
+            {property.bedrooms === 0 ? 'Studio' : `${property.bedrooms} bd`}
           </span>
-          <span className="flex items-center gap-1.5">
-            <Bath className="size-4" aria-hidden />
+          <span className="inline-flex items-center gap-1.5">
+            <Bath className="size-4 text-brand" />
             {property.bathrooms} ba
           </span>
-          <span className="flex items-center gap-1.5">
-            <Ruler className="size-4" aria-hidden />
-            {formatSqm(property.sqm)}
+          <span className="inline-flex items-center gap-1.5">
+            <Maximize className="size-4 text-brand" />
+            {property.sqm.toLocaleString('en-KE')} m²
           </span>
-        </div>
-        <div className="mt-auto flex items-center justify-between pt-1.5">
-          <span className="flex items-center gap-1 text-sm text-muted-foreground" aria-label={`Rated ${property.rating.toFixed(1)} out of 5`}>
-            <Star className="size-4 fill-gold text-gold" aria-hidden />
+          <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Star className="size-3.5 fill-sun text-sun" />
             {property.rating.toFixed(1)}
           </span>
-          {!compact && (
-            <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-gold-deep opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:text-gold">
-              View
-              <ArrowUpRight className="size-3.5" aria-hidden />
-            </span>
-          )}
         </div>
-        <p className="hidden pt-1.5 text-[11px] text-muted-foreground print:block">
-          View online: delima.co.ke/property/{property.slug}
-        </p>
+
+        <div className="flex items-center justify-between border-t border-line pt-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {typeLabel[property.type]}
+          </span>
+          <span className="inline-flex items-center gap-1 text-sm font-bold text-brand transition-transform group-hover:translate-x-0.5">
+            View details <span aria-hidden>→</span>
+          </span>
+        </div>
       </div>
     </article>
   )
 }
 
-export function PropertyCardSkeleton() {
+export function PropertyCardSkeleton({ className }: { className?: string }) {
   return (
-    <div className="overflow-hidden rounded-xl border bg-card luxury-shadow" aria-hidden>
-      <Skeleton className="aspect-[4/3] w-full rounded-none border-0" />
-      <div className="flex flex-col gap-2.5 p-4">
-        <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-5 w-4/5" />
-        <Skeleton className="h-5 w-2/5" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/5" />
+    <div className={cn('card-modern overflow-hidden', className)} aria-hidden>
+      <div className="aspect-[4/3] shimmer" />
+      <div className="space-y-3 p-5">
+        <div className="h-5 w-3/4 rounded shimmer" />
+        <div className="h-4 w-1/2 rounded shimmer" />
+        <div className="flex gap-3 pt-1">
+          <div className="h-4 w-14 rounded shimmer" />
+          <div className="h-4 w-14 rounded shimmer" />
+          <div className="h-4 w-16 rounded shimmer" />
+        </div>
+        <div className="h-px bg-line" />
+        <div className="h-4 w-24 rounded shimmer" />
       </div>
     </div>
   )

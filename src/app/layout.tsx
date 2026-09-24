@@ -1,17 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Manrope, Playfair_Display } from "next/font/google";
+import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { SwRegister } from "@/components/delima/sw-register";
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const manrope = Manrope({
-  variable: "--font-manrope",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
   display: "swap",
 });
@@ -25,7 +19,7 @@ const geistMono = Geist_Mono({
 const SITE_URL = "https://delimarealtors.co.ke";
 
 /**
- * Static, fully-literal JSON-LD (issue #67). Defined as a module-level const
+ * Static, fully-literal JSON-LD. Defined as a module-level const
  * with zero user-generated content, so JSON.stringify is XSS-safe by design.
  */
 const realEstateAgentJsonLd = {
@@ -48,19 +42,19 @@ const realEstateAgentJsonLd = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Delima Realtors — Luxury Homes in Nairobi",
+    default: "Delima Realtors — Find a Home You'll Love in Nairobi",
     template: "%s · Delima Realtors",
   },
   description:
-    "Luxury homes across Nairobi — AI-powered property search, interactive map discovery and market intelligence from Delima Realtors. Karen, Muthaiga, Runda, Kilimani and beyond.",
+    "Discover verified, title-checked homes across Nairobi. Buy, rent and invest with Delima Realtors — AI-powered search, market insights and end-to-end support from Karen to Kilimani.",
   keywords: [
     "Delima Realtors",
     "Nairobi real estate",
-    "luxury homes Kenya",
+    "houses for sale Nairobi",
+    "apartments for rent Kilimani",
     "Karen houses for sale",
-    "Westlands apartments",
     "property Kenya",
-    "real estate platform",
+    "verified listings Kenya",
   ],
   authors: [{ name: "Delima Realtors" }],
   alternates: {
@@ -76,15 +70,15 @@ export const metadata: Metadata = {
         url: "/api/og",
         width: 1200,
         height: 630,
-        alt: "Delima Realtors — Find Your Signature Address",
+        alt: "Delima Realtors — Find a Home You'll Love in Nairobi",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Delima Realtors — Luxury Homes in Nairobi",
+    title: "Delima Realtors — Find a Home You'll Love in Nairobi",
     description:
-      "AI-powered property search, interactive map discovery and market intelligence for Nairobi's finest homes.",
+      "Verified, title-checked homes across Nairobi with AI-powered search and honest market guidance.",
     images: ["/api/og"],
   },
   robots: {
@@ -94,7 +88,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Delima",
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
   formatDetection: {
     telephone: false,
@@ -105,10 +99,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#c9a227" },
-    { media: "(prefers-color-scheme: dark)", color: "#1f1810" },
-  ],
+  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#fafaf7" }],
 };
 
 export default function RootLayout({
@@ -119,7 +110,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${playfair.variable} ${manrope.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`${jakarta.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         <script
           type="application/ld+json"

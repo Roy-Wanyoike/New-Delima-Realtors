@@ -1,31 +1,46 @@
-// Delima Realtors Platform 2.0 — app shell: header, mobile nav, footer
-// Owner: principal-engineer-a (Task 5-a).
-// Exports: DelimaHeader, DelimaFooter, MobileNav
+// Delima Realtors 3.0 — app shell: header, booking dialog, mobile nav, footer
+// Owner: REV-1 (shell engineer). Exports: DelimaHeader, DelimaFooter, MobileNav
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { create } from 'zustand'
+import { motion } from 'framer-motion'
 import {
-  Building2,
-  Calculator,
-  Heart,
+  CalendarCheck,
+  ChevronRight,
+  Compass,
+  Facebook,
   Home,
+  Instagram,
+  Linkedin,
   LineChart,
   Loader2,
   Mail,
   Map,
   MapPin,
   Menu,
+  MessageCircle,
   Phone,
-  Users,
+  X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import type { View } from '@/lib/types'
+import type { FilterState, View } from '@/lib/types'
 import { useAppStore } from '@/lib/store'
 import { useInsights } from '@/hooks/use-delima-data'
 import { useToast } from '@/hooks/use-toast'
+import { whatsappLink } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Sheet,
   SheetContent,
@@ -33,242 +48,569 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { Reveal } from '@/components/delima/ui-kit'
 import { cn, fetchWithTimeout } from '@/lib/utils'
+
+/* ------------------------------------------------------------------ */
+/* Shell-level UI state (menu + booking dialog shared across shell)    */
+/* ------------------------------------------------------------------ */
+
+interface ShellUiState {
+  menuOpen: boolean
+  bookingOpen: boolean
+  setMenuOpen: (open: boolean) => void
+  setBookingOpen: (open: boolean) => void
+}
+
+const useShellUi = create<ShellUiState>(set => ({
+  menuOpen: false,
+  bookingOpen: false,
+  setMenuOpen: menuOpen => set({ menuOpen }),
+  setBookingOpen: bookingOpen => set({ bookingOpen }),
+}))
+
+const AGENT_PHONE_DISPLAY = '+254 727 523 752'
+const AGENT_PHONE_TEL = 'tel:+254727523752'
+const AGENT_EMAIL = 'hello@delimarealtors.co.ke'
 
 /* ------------------------------------------------------------------ */
 /* Shared nav model                                                    */
 /* ------------------------------------------------------------------ */
 
+interface NavActions {
+  setView: (v: View) => void
+  setFilterAndGo: (f: Partial<FilterState>, v?: View) => void
+}
+
 interface NavItem {
   label: string
-  short?: string
-  view: View
-  icon: LucideIcon
+  icon?: LucideIcon
+  active: (view: View, status: FilterState['status']) => boolean
+  go: (actions: NavActions) => void
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', view: 'home', icon: Home },
-  { label: 'Properties', view: 'properties', icon: Building2 },
-  { label: 'Map Search', short: 'Map', view: 'map', icon: Map },
-  { label: 'Market Insights', short: 'Insights', view: 'insights', icon: LineChart },
-  { label: 'Agents', view: 'agents', icon: Users },
-  { label: 'Finance', view: 'finance', icon: Calculator },
+  {
+    label: 'Home',
+    icon: Home,
+    active: view => view === 'home',
+    go: ({ setView }) => setView('home'),
+  },
+  {
+    label: 'Buy',
+    active: (view, status) => view === 'properties' && status === 'FOR_SALE',
+    go: ({ setFilterAndGo }) => setFilterAndGo({ status: 'FOR_SALE' }, 'properties'),
+  },
+  {
+    label: 'Rent',
+    active: (view, status) => view === 'properties' && status === 'FOR_RENT',
+    go: ({ setFilterAndGo }) => setFilterAndGo({ status: 'FOR_RENT' }, 'properties'),
+  },
+  {
+    label: 'Properties',
+    active: (view, status) =>
+      (view === 'properties' || view === 'property') &&
+      status !== 'FOR_SALE' &&
+      status !== 'FOR_RENT',
+    go: ({ setView }) => setView('properties'),
+  },
+  {
+    label: 'Insights',
+    active: view => view === 'insights',
+    go: ({ setView }) => setView('insights'),
+  },
+  {
+    label: 'Team',
+    icon: Compass,
+    active: view => view === 'agents',
+    go: ({ setView }) => setView('agents'),
+  },
 ]
 
-const MOBILE_NAV: NavItem[] = NAV_ITEMS.slice(0, 4)
-
-function isActive(current: View, target: View): boolean {
-  return current === target || (target === 'properties' && current === 'property')
-}
-
 /* ------------------------------------------------------------------ */
-/* Brand mark — gold diamond monogram                                  */
+/* Brand mark — evergreen gradient monogram + wordmark                 */
 /* ------------------------------------------------------------------ */
 
-function GoldMark() {
+function BrandMark({ onDark = false }: { onDark?: boolean }) {
   return (
-    <span className="relative flex size-9 shrink-0 items-center justify-center">
-      <span className="gold-gradient-bg absolute inset-0 rotate-45 rounded-[7px] luxury-shadow" />
-      <span className="relative font-display text-base font-bold text-[#1f1810]">D</span>
+    <span className="flex min-h-[44px] items-center gap-2.5">
+      <span
+        aria-hidden="true"
+        className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-mid soft-shadow"
+      >
+        <span className="font-display text-lg font-extrabold leading-none text-white">D</span>
+      </span>
+      <span className="flex flex-col leading-none">
+        <span className={cn('font-display text-lg font-extrabold tracking-tight', onDark ? 'text-white' : 'text-ink')}>
+          Delima
+        </span>
+        <span className={cn('mt-1 text-[0.55rem] font-bold uppercase tracking-[0.34em]', onDark ? 'text-sun' : 'text-sun-deep')}>
+          Realtors
+        </span>
+      </span>
     </span>
   )
 }
 
 /* ------------------------------------------------------------------ */
-/* DelimaHeader — sticky glassy header                                 */
+/* Booking dialog — "Book a Viewing" lead form (shared header/footer)  */
+/* POST /api/leads { name, email, phone, message?, source? } → 201     */
 /* ------------------------------------------------------------------ */
 
-export function DelimaHeader() {
-  const view = useAppStore(s => s.view)
-  const setView = useAppStore(s => s.setView)
-  const goHome = useAppStore(s => s.goHome)
-  const favoritesCount = useAppStore(s => s.favorites.length)
-  const [menuOpen, setMenuOpen] = useState(false)
+interface BookingForm {
+  name: string
+  email: string
+  phone: string
+  date: string
+  message: string
+}
+
+const EMPTY_BOOKING: BookingForm = { name: '', email: '', phone: '', date: '', message: '' }
+
+function BookingDialog() {
+  const open = useShellUi(s => s.bookingOpen)
+  const setOpen = useShellUi(s => s.setBookingOpen)
+  const { toast } = useToast()
+  const [form, setForm] = useState<BookingForm>(EMPTY_BOOKING)
+  const [submitting, setSubmitting] = useState(false)
+
+  // Fresh form every time the dialog (re)opens.
+  useEffect(() => {
+    if (!open) {
+      setForm(EMPTY_BOOKING)
+      setSubmitting(false)
+    }
+  }, [open])
+
+  const today = new Date().toISOString().slice(0, 10)
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (submitting) return
+    setSubmitting(true)
+
+    // The leads API has no dedicated date column — carry the preferred date
+    // inside the message so the CRM still sees it.
+    const messageParts = [
+      form.date ? `Preferred viewing date: ${form.date}` : '',
+      form.message.trim(),
+    ].filter(Boolean)
+
+    try {
+      const res = await fetchWithTimeout('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          ...(messageParts.length > 0 ? { message: messageParts.join(' — ') } : {}),
+          source: 'VIEWING_REQUEST',
+        }),
+      })
+
+      if (res.ok) {
+        toast({
+          title: 'Viewing request received',
+          description: 'Thank you! Our team will confirm your appointment shortly.',
+        })
+        setOpen(false)
+      } else {
+        let description = 'Please try again in a moment.'
+        try {
+          const data: unknown = await res.json()
+          if (data && typeof data === 'object' && 'error' in data) {
+            const payload = data as { error?: unknown; issues?: Array<{ message?: unknown }> }
+            const firstIssue = Array.isArray(payload.issues) ? payload.issues[0]?.message : undefined
+            if (typeof firstIssue === 'string' && firstIssue.length > 0) description = firstIssue
+            else if (typeof payload.error === 'string' && payload.error.length > 0) description = payload.error
+          }
+        } catch {
+          // non-JSON error body — keep the generic copy
+        }
+        toast({ title: 'Could not send request', description, variant: 'destructive' })
+      }
+    } catch {
+      toast({
+        title: 'Network error',
+        description: 'Please check your connection and try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/70 bg-cream/80 backdrop-blur-xl dark:bg-[#141009]/80">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 md:h-[72px] lg:px-8">
-        {/* logo */}
-        <button
-          type="button"
-          onClick={goHome}
-          aria-label="Delima Realtors — home"
-          className="flex min-h-[44px] items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <GoldMark />
-          <span className="flex flex-col text-left leading-none">
-            <span className="font-display text-lg font-bold tracking-[0.18em]">DELIMA</span>
-            <span className="mt-1 text-[0.55rem] font-bold uppercase tracking-[0.38em] text-gold-deep dark:text-gold">
-              Realtors
-            </span>
-          </span>
-        </button>
-
-        {/* desktop nav — classic uppercase letter-spaced */}
-        <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
-          {NAV_ITEMS.map(item => {
-            const active = isActive(view, item.view)
-            return (
-              <button
-                key={item.view}
-                type="button"
-                onClick={() => setView(item.view)}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'flex min-h-[44px] items-center px-3 text-[0.72rem] font-bold uppercase tracking-[0.14em] transition-colors hover:text-gold-deep dark:hover:text-gold',
-                  active && 'gold-underline text-gold-deep dark:text-gold',
-                )}
-              >
-                {item.label}
-              </button>
-            )
-          })}
-        </nav>
-
-        {/* right cluster — classic: phone, saved, gold CTA */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <a
-            href="tel:+254727523752"
-            className="hidden min-h-[44px] flex-col justify-center text-right leading-tight lg:flex"
-            aria-label="Call Delima Realtors on +254 727 523 752"
-          >
-            <span className="text-[0.6rem] font-bold uppercase tracking-[0.24em] text-muted-foreground">
-              Call us
-            </span>
-            <span className="text-sm font-semibold text-espresso dark:text-cream">+254 727 523 752</span>
-          </a>
-          <span className="hidden h-8 w-px bg-border lg:block" aria-hidden="true" />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setView('properties')}
-            aria-label={`Saved homes (${favoritesCount})`}
-            className="relative size-11 hover:text-gold-deep dark:hover:text-gold"
-          >
-            <Heart className="size-5" aria-hidden="true" />
-            {favoritesCount > 0 && (
-              <span className="gold-gradient-bg absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-[#1f1810]">
-                {favoritesCount}
-              </span>
-            )}
-          </Button>
-          <Button
-            onClick={() => setView('properties')}
-            className="gold-gradient-bg hidden min-h-[44px] rounded-full border-0 px-5 text-[0.72rem] font-bold uppercase tracking-[0.14em] text-[#1f1810] hover:opacity-90 sm:inline-flex"
-          >
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl p-6 sm:max-w-md delima-scroll">
+        <DialogHeader className="text-left">
+          <span className="eyebrow mb-1">Delima Realtors</span>
+          <DialogTitle className="text-2xl font-extrabold tracking-tight text-ink">
             Book a Viewing
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open navigation menu"
-            className="size-11 md:hidden"
-          >
-            <Menu className="size-5" aria-hidden="true" />
-          </Button>
-        </div>
-      </div>
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed">
+            Tell us when suits you and a Delima agent will confirm your private tour within
+            one business day.
+          </DialogDescription>
+        </DialogHeader>
 
-      {/* full-screen mobile drawer */}
-      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-        <SheetContent side="left" className="w-full sm:max-w-[400px]">
-          <SheetHeader className="border-b border-border/50 pb-4 pt-2">
-            <div className="flex items-center gap-2.5">
-              <GoldMark />
-              <SheetTitle className="font-display text-lg font-bold tracking-[0.18em]">
-                DELIMA
-              </SheetTitle>
-            </div>
-            <SheetDescription className="sr-only">
-              Delima Realtors navigation menu
-            </SheetDescription>
-          </SheetHeader>
-          <nav aria-label="Mobile" className="flex flex-1 flex-col px-6">
-            {NAV_ITEMS.map(item => {
-              const active = isActive(view, item.view)
-              return (
-                <button
-                  key={item.view}
-                  type="button"
-                  onClick={() => {
-                    setView(item.view)
-                    setMenuOpen(false)
-                  }}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'flex min-h-[56px] items-center border-b border-border/50 font-display text-2xl transition-colors hover:text-gold-deep dark:hover:text-gold',
-                    active && 'text-gold-deep dark:text-gold',
-                  )}
-                >
-                  {item.label}
-                  {active && <span className="gold-gradient-bg ml-auto size-1.5 rounded-full" />}
-                </button>
-              )
-            })}
-          </nav>
-          <div className="px-6 pb-10">
-            <Button
-              onClick={() => {
-                setView('properties')
-                setMenuOpen(false)
-              }}
-              className="gold-gradient-bg min-h-[48px] w-full font-semibold text-[#1f1810] hover:opacity-90"
-            >
-              Book a Viewing
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setView('valuation')
-                setMenuOpen(false)
-              }}
-              className="mt-2 min-h-[48px] w-full"
-            >
-              List with Us
-            </Button>
-            <p className="mt-5 text-center text-xs text-muted-foreground">
-              +254 727 523 752 · info@delimarealtors.com
-            </p>
+        <form onSubmit={e => void handleSubmit(e)} className="mt-2 grid gap-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="booking-name">Full name</Label>
+            <Input
+              id="booking-name"
+              required
+              minLength={2}
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="Amina Wanjiru"
+              autoComplete="name"
+              className="min-h-[44px] rounded-xl"
+            />
           </div>
-        </SheetContent>
-      </Sheet>
-    </header>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="booking-email">Email</Label>
+              <Input
+                id="booking-email"
+                type="email"
+                required
+                value={form.email}
+                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                placeholder="you@example.com"
+                autoComplete="email"
+                className="min-h-[44px] rounded-xl"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="booking-phone">Phone</Label>
+              <Input
+                id="booking-phone"
+                type="tel"
+                required
+                minLength={7}
+                value={form.phone}
+                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="+254 7XX XXX XXX"
+                autoComplete="tel"
+                className="min-h-[44px] rounded-xl"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="booking-date">Preferred date</Label>
+            <Input
+              id="booking-date"
+              type="date"
+              min={today}
+              value={form.date}
+              onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+              className="min-h-[44px] rounded-xl"
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="booking-message">
+              Message <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Textarea
+              id="booking-message"
+              rows={3}
+              value={form.message}
+              onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+              placeholder="Which homes would you like to see?"
+              className="resize-none rounded-xl"
+            />
+          </div>
+
+          <Button
+            type="submit"
+            disabled={submitting}
+            aria-busy={submitting}
+            className="btn-sun min-h-[48px] w-full gap-2 rounded-full text-sm font-bold"
+          >
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <CalendarCheck className="size-4" aria-hidden="true" />
+            )}
+            {submitting ? 'Sending…' : 'Request Viewing'}
+          </Button>
+          <p className="text-center text-[11px] text-muted-foreground">
+            By submitting you agree to be contacted about this enquiry.
+          </p>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
 /* ------------------------------------------------------------------ */
-/* MobileNav — fixed bottom bar (sm and below)                         */
+/* Mobile menu sheet — shared by header hamburger + MobileNav "More"   */
 /* ------------------------------------------------------------------ */
+
+function MobileMenuSheet() {
+  const menuOpen = useShellUi(s => s.menuOpen)
+  const setMenuOpen = useShellUi(s => s.setMenuOpen)
+  const setBookingOpen = useShellUi(s => s.setBookingOpen)
+  const view = useAppStore(s => s.view)
+  const status = useAppStore(s => s.filters.status)
+  const setView = useAppStore(s => s.setView)
+  const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
+
+  return (
+    <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-sm">
+        <SheetHeader className="border-b border-line pb-4 pt-2">
+          <div className="flex items-center gap-2.5">
+            <BrandMark />
+          </div>
+          <SheetDescription className="sr-only">
+            Delima Realtors navigation menu
+          </SheetDescription>
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+        </SheetHeader>
+
+        <nav aria-label="Mobile menu" className="delima-scroll flex-1 overflow-y-auto px-4 py-4">
+          <ul className="flex flex-col gap-1">
+            {NAV_ITEMS.map(item => {
+              const active = item.active(view, status)
+              const Icon = item.icon
+              return (
+                <li key={item.label}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      item.go({ setView, setFilterAndGo })
+                      setMenuOpen(false)
+                    }}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'flex min-h-[48px] w-full items-center gap-3 rounded-xl px-3 text-base font-medium transition-colors hover:bg-brand-soft/70 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      active && 'bg-brand-soft/70 font-bold text-brand',
+                    )}
+                  >
+                    {Icon ? <Icon className="size-4.5 shrink-0" aria-hidden="true" /> : null}
+                    {item.label}
+                    {active ? (
+                      <span className="ml-auto size-1.5 rounded-full bg-sun" aria-hidden="true" />
+                    ) : (
+                      <ChevronRight className="ml-auto size-4 text-muted-foreground" aria-hidden="true" />
+                    )}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+
+        <div className="border-t border-line px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5">
+          <a
+            href={AGENT_PHONE_TEL}
+            className="flex min-h-[44px] items-center gap-2.5 text-sm font-semibold text-ink transition-colors hover:text-brand"
+          >
+            <Phone className="size-4 text-sun-deep" aria-hidden="true" />
+            {AGENT_PHONE_DISPLAY}
+          </a>
+          <Button
+            onClick={() => {
+              setMenuOpen(false)
+              setBookingOpen(true)
+            }}
+            className="btn-sun mt-3 min-h-[48px] w-full gap-2 rounded-full text-sm font-bold"
+          >
+            <CalendarCheck className="size-4" aria-hidden="true" />
+            Book a Viewing
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* DelimaHeader — sticky glass header                                  */
+/* ------------------------------------------------------------------ */
+
+export function DelimaHeader() {
+  const view = useAppStore(s => s.view)
+  const status = useAppStore(s => s.filters.status)
+  const setView = useAppStore(s => s.setView)
+  const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
+  const goHome = useAppStore(s => s.goHome)
+  const setMenuOpen = useShellUi(s => s.setMenuOpen)
+  const setBookingOpen = useShellUi(s => s.setBookingOpen)
+  const menuOpen = useShellUi(s => s.menuOpen)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  return (
+    <>
+      <header className="glass sticky top-0 z-50 border-b border-line">
+        <div
+          className={cn(
+            'container-page flex items-center justify-between gap-3 transition-all duration-300',
+            scrolled ? 'h-14 md:h-16' : 'h-16 md:h-[72px]',
+          )}
+        >
+          {/* logo */}
+          <button
+            type="button"
+            onClick={goHome}
+            aria-label="Delima Realtors — home"
+            className="-ml-1 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <BrandMark />
+          </button>
+
+          {/* desktop nav */}
+          <nav aria-label="Primary" className="hidden items-center gap-0.5 lg:flex">
+            {NAV_ITEMS.map(item => {
+              const active = item.active(view, status)
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => item.go({ setView, setFilterAndGo })}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'relative flex min-h-[44px] items-center rounded-full px-3.5 text-sm font-medium transition-colors hover:bg-brand-soft/70 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    active ? 'font-bold text-brand' : 'text-ink/70',
+                  )}
+                >
+                  {item.label}
+                  {active && (
+                    <span
+                      className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-sun"
+                      aria-hidden="true"
+                    />
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+
+          {/* right cluster */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
+            <a
+              href={AGENT_PHONE_TEL}
+              className="hidden min-h-[44px] items-center gap-2 rounded-full px-3 text-sm font-semibold text-ink transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:flex"
+            >
+              <Phone className="size-4 text-sun-deep" aria-hidden="true" />
+              {AGENT_PHONE_DISPLAY}
+            </a>
+            <button
+              type="button"
+              onClick={() => setBookingOpen(true)}
+              className="btn-sun inline-flex min-h-[44px] items-center gap-2 rounded-full px-4 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
+            >
+              <CalendarCheck className="size-4 shrink-0" aria-hidden="true" />
+              <span className="hidden sm:inline">Book a Viewing</span>
+              <span className="sm:hidden">Book</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open navigation menu"
+              aria-expanded={menuOpen}
+              className="inline-flex size-11 items-center justify-center rounded-full text-ink transition-colors hover:bg-brand-soft/70 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+            >
+              <Menu className="size-5" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <MobileMenuSheet />
+      <BookingDialog />
+    </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* MobileNav — fixed bottom bar (below sm only)                        */
+/* ------------------------------------------------------------------ */
+
+interface MobileNavItem {
+  label: string
+  icon: LucideIcon
+  active: (view: View) => boolean
+  go: (actions: NavActions & { setMenuOpen: (open: boolean) => void }) => void
+}
+
+const MOBILE_NAV_ITEMS: MobileNavItem[] = [
+  {
+    label: 'Home',
+    icon: Home,
+    active: view => view === 'home',
+    go: ({ setView }) => setView('home'),
+  },
+  {
+    label: 'Explore',
+    icon: Compass,
+    active: view => view === 'properties' || view === 'property',
+    go: ({ setView }) => setView('properties'),
+  },
+  {
+    label: 'Map',
+    icon: Map,
+    active: view => view === 'map',
+    go: ({ setView }) => setView('map'),
+  },
+  {
+    label: 'Insights',
+    icon: LineChart,
+    active: view => view === 'insights',
+    go: ({ setView }) => setView('insights'),
+  },
+  {
+    label: 'More',
+    icon: Menu,
+    active: view => view === 'agents' || view === 'finance' || view === 'admin' || view === 'valuation',
+    go: ({ setMenuOpen }) => setMenuOpen(true),
+  },
+]
 
 export function MobileNav() {
   const view = useAppStore(s => s.view)
   const setView = useAppStore(s => s.setView)
+  const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
+  const setMenuOpen = useShellUi(s => s.setMenuOpen)
 
   return (
     <nav
       aria-label="Mobile navigation"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-cream/90 backdrop-blur-xl sm:hidden dark:bg-[#141009]/90"
+      className="glass fixed inset-x-0 bottom-0 z-40 border-t border-line sm:hidden"
     >
-      <div className="grid grid-cols-4 pb-[env(safe-area-inset-bottom)]">
-        {MOBILE_NAV.map(item => {
-          const active = isActive(view, item.view)
+      <div className="grid grid-cols-5 pb-[env(safe-area-inset-bottom)]">
+        {MOBILE_NAV_ITEMS.map(item => {
+          const active = item.active(view)
           const Icon = item.icon
           return (
             <button
-              key={item.view}
+              key={item.label}
               type="button"
-              onClick={() => setView(item.view)}
+              onClick={() => item.go({ setView, setFilterAndGo, setMenuOpen })}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'flex min-h-[60px] flex-col items-center justify-center gap-1 transition-colors',
-                active ? 'text-gold-deep dark:text-gold' : 'text-muted-foreground',
+                'relative flex min-h-[60px] flex-col items-center justify-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                active ? 'font-bold text-brand' : 'text-muted-foreground',
               )}
             >
               <Icon className="size-5" aria-hidden="true" />
-              <span className="text-[10px] font-semibold tracking-wide">
-                {item.short ?? item.label}
-              </span>
+              <span className="text-[10px] font-semibold tracking-wide">{item.label}</span>
+              {active && (
+                <span className="absolute top-1.5 size-1 rounded-full bg-sun" aria-hidden="true" />
+              )}
             </button>
           )
         })}
@@ -278,204 +620,285 @@ export function MobileNav() {
 }
 
 /* ------------------------------------------------------------------ */
-/* DelimaFooter — espresso footer, sticky-footer ready (mt-auto)       */
+/* DelimaFooter — evergreen footer, sticks to viewport bottom (mt-auto)*/
 /* ------------------------------------------------------------------ */
 
-const EXPLORE_VIEWS: Array<{ label: string; view: View }> = [
-  { label: 'Home', view: 'home' },
-  { label: 'Properties', view: 'properties' },
-  { label: 'Map Search', view: 'map' },
-  { label: 'Market Insights', view: 'insights' },
-  { label: 'Agents', view: 'agents' },
-  { label: 'Finance', view: 'finance' },
-  { label: 'Free AI Valuation', view: 'valuation' },
-  { label: 'Agent CRM (demo)', view: 'admin' },
+interface FooterLink {
+  label: string
+  go: (actions: NavActions) => void
+}
+
+const EXPLORE_LINKS: FooterLink[] = [
+  {
+    label: 'Buy',
+    go: ({ setFilterAndGo }) => setFilterAndGo({ status: 'FOR_SALE' }, 'properties'),
+  },
+  {
+    label: 'Rent',
+    go: ({ setFilterAndGo }) => setFilterAndGo({ status: 'FOR_RENT' }, 'properties'),
+  },
+  {
+    label: 'New Developments',
+    go: ({ setFilterAndGo }) => setFilterAndGo({ status: 'NEW_DEVELOPMENT' }, 'properties'),
+  },
+  { label: 'Map Search', go: ({ setView }) => setView('map') },
+  { label: 'Market Insights', go: ({ setView }) => setView('insights') },
+  { label: 'Mortgage Tools', go: ({ setView }) => setView('finance') },
+]
+
+const FALLBACK_NEIGHBORHOODS: Array<{ slug: string; name: string }> = [
+  { slug: 'karen', name: 'Karen' },
+  { slug: 'runda', name: 'Runda' },
+  { slug: 'lavington', name: 'Lavington' },
+  { slug: 'kilimani', name: 'Kilimani' },
+  { slug: 'westlands', name: 'Westlands' },
+  { slug: 'kileleshwa', name: 'Kileleshwa' },
+]
+
+const SOCIAL_LINKS: Array<{ label: string; icon: LucideIcon }> = [
+  { label: 'Facebook', icon: Facebook },
+  { label: 'Instagram', icon: Instagram },
+  { label: 'X (Twitter)', icon: X },
+  { label: 'LinkedIn', icon: Linkedin },
 ]
 
 function FooterHeading({ children }: { children: string }) {
   return (
-    <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-gold">{children}</h3>
+    <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-sun">{children}</h3>
   )
 }
 
 export function DelimaFooter() {
   const setView = useAppStore(s => s.setView)
   const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
+  const setBookingOpen = useShellUi(s => s.setBookingOpen)
+  const goHome = useAppStore(s => s.goHome)
   const { neighborhoods, loading: hoodsLoading } = useInsights()
   const { toast } = useToast()
-  const [email, setEmail] = useState('')
-  const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const openAdmin = () => setView('admin')
+  const [subEmail, setSubEmail] = useState('')
+  const [subscribing, setSubscribing] = useState(false)
+
+  const footerHoods: Array<{ slug: string; name: string }> =
+    !hoodsLoading && neighborhoods.length > 0
+      ? neighborhoods.map(n => ({ slug: n.slug, name: n.name }))
+      : FALLBACK_NEIGHBORHOODS
 
   async function subscribe(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (!email.trim() || subscribeStatus === 'loading') return
-    setSubscribeStatus('loading')
+    if (!subEmail.trim() || subscribing) return
+    setSubscribing(true)
     try {
+      // Contract: POST /api/subscribe { email } → 201 {ok,already:false} | 200 {ok,already:true}
       const res = await fetchWithTimeout('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: subEmail.trim() }),
       })
       if (res.status === 201) {
-        setSubscribeStatus('success')
-        setEmail('')
-        toast({ title: 'Welcome to the Delima circle' })
+        setSubEmail('')
+        toast({
+          title: 'Welcome to the Delima Circle',
+          description: 'Market intel and off-market homes — straight to your inbox.',
+        })
       } else if (res.status === 200) {
-        setSubscribeStatus('success')
-        setEmail('')
-        toast({ title: "You're already in the Delima circle" })
+        setSubEmail('')
+        toast({ title: "You're already in the Delima Circle" })
       } else {
-        setSubscribeStatus('error')
+        toast({
+          title: 'Subscription failed',
+          description: 'Please check your email address and try again.',
+          variant: 'destructive',
+        })
       }
     } catch {
-      setSubscribeStatus('error')
+      toast({
+        title: 'Subscription failed',
+        description: 'Please check your connection and try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setSubscribing(false)
     }
   }
 
   return (
-    <footer className="mt-auto bg-ink text-[#f0e9dc] dark:bg-[#0d1b30]">
-      <div className="gold-hairline" aria-hidden="true" />
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.4fr_1fr_1fr_1.3fr] lg:px-8">
-        {/* brand + contact */}
-        <div>
-          <div className="flex items-center gap-2.5">
-            <GoldMark />
-            <span className="flex flex-col leading-none">
-              <span className="font-display text-lg font-bold tracking-[0.18em] text-white">
-                DELIMA
-              </span>
-              <span className="mt-1 text-[0.55rem] font-bold uppercase tracking-[0.38em] text-gold">
-                Realtors
-              </span>
-            </span>
-          </div>
-          <p className="mt-5 max-w-sm text-sm leading-relaxed text-[#f0e9dc]/60">
-            Nairobi&rsquo;s trusted address for luxury homes — from leafy Karen villas to
-            penthouses above Westlands. Discreet, data-driven, and always on your side of the
-            table.
+    <footer className="mt-auto bg-brand-deep text-white">
+      <div className="container-page grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1.4fr]">
+        {/* brand */}
+        <Reveal>
+          <button
+            type="button"
+            onClick={goHome}
+            aria-label="Delima Realtors — home"
+            className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sun"
+          >
+            <BrandMark onDark />
+          </button>
+          <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/60">
+            Nairobi&rsquo;s modern address for exceptional homes — from leafy Karen villas to
+            penthouses above Westlands. Data-driven advice, honest pricing, and agents who
+            answer.
           </p>
-          <ul className="mt-6 space-y-1">
-            <li>
+          <div className="mt-6 flex items-center gap-2">
+            {SOCIAL_LINKS.map(({ label, icon: Icon }) => (
               <a
-                href="tel:+254727523752"
-                className="flex min-h-[44px] items-center gap-2.5 text-sm text-[#f0e9dc]/70 transition-colors hover:text-gold"
+                key={label}
+                href="#"
+                aria-label={`Delima Realtors on ${label}`}
+                className="flex size-11 items-center justify-center rounded-full border border-white/15 text-white/70 transition-colors hover:border-sun hover:bg-sun hover:text-brand-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
               >
-                <Phone className="size-4 shrink-0 text-gold" aria-hidden="true" />
-                +254 727 523 752
+                <Icon className="size-4.5" aria-hidden="true" />
               </a>
-            </li>
-            <li>
-              <a
-                href="mailto:info@delimarealtors.com"
-                className="flex min-h-[44px] items-center gap-2.5 text-sm text-[#f0e9dc]/70 transition-colors hover:text-gold"
-              >
-                <Mail className="size-4 shrink-0 text-gold" aria-hidden="true" />
-                info@delimarealtors.com
-              </a>
-            </li>
-            <li className="flex min-h-[44px] items-center gap-2.5 text-sm text-[#f0e9dc]/70">
-              <MapPin className="size-4 shrink-0 text-gold" aria-hidden="true" />
-              Nairobi, Kenya
-            </li>
-          </ul>
-        </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setBookingOpen(true)}
+            className="btn-sun mt-7 inline-flex min-h-[44px] items-center gap-2 rounded-full px-5 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
+          >
+            <CalendarCheck className="size-4" aria-hidden="true" />
+            Book a Viewing
+          </button>
+        </Reveal>
 
         {/* explore */}
-        <nav aria-label="Footer explore">
-          <FooterHeading>Explore</FooterHeading>
-          <ul className="mt-4">
-            {EXPLORE_VIEWS.map(item => (
-              <li key={item.view}>
-                <button
-                  type="button"
-                  onClick={() => setView(item.view)}
-                  className="flex min-h-[44px] w-full items-center text-left text-sm text-[#f0e9dc]/65 transition-colors hover:text-gold"
-                >
-                  {item.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        <Reveal delay={0.06}>
+          <nav aria-label="Footer explore">
+            <FooterHeading>Explore</FooterHeading>
+            <ul className="mt-4">
+              {EXPLORE_LINKS.map(link => (
+                <li key={link.label}>
+                  <button
+                    type="button"
+                    onClick={() => link.go({ setView, setFilterAndGo })}
+                    className="flex min-h-[44px] w-full items-center text-left text-sm text-white/65 transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
+                  >
+                    {link.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </Reveal>
 
         {/* neighborhoods */}
-        <nav aria-label="Footer neighborhoods">
-          <FooterHeading>Neighborhoods</FooterHeading>
-          <ul className="mt-4">
-            {hoodsLoading && neighborhoods.length === 0
-              ? [0, 1, 2, 3, 4, 5].map(i => (
-                  <li key={i} className="flex min-h-[44px] items-center">
-                    <span
-                      className="shimmer h-3.5 rounded bg-white/10"
-                      style={{ width: `${55 + ((i * 13) % 35)}%` }}
-                    />
-                  </li>
-                ))
-              : neighborhoods.map(n => (
-                  <li key={n.slug}>
-                    <button
-                      type="button"
-                      onClick={() => setFilterAndGo({ neighborhood: n.slug }, 'properties')}
-                      className="flex min-h-[44px] w-full items-center text-left text-sm text-[#f0e9dc]/65 transition-colors hover:text-gold"
-                    >
-                      {n.name}
-                    </button>
-                  </li>
-                ))}
-          </ul>
-        </nav>
+        <Reveal delay={0.12}>
+          <nav aria-label="Footer neighborhoods">
+            <FooterHeading>Neighborhoods</FooterHeading>
+            <ul className="mt-4">
+              {footerHoods.map(hood => (
+                <li key={hood.slug}>
+                  <button
+                    type="button"
+                    onClick={() => setFilterAndGo({ neighborhood: hood.slug }, 'properties')}
+                    className="flex min-h-[44px] w-full items-center text-left text-sm text-white/65 transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
+                  >
+                    {hood.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </Reveal>
 
-        {/* newsletter */}
-        <div>
-          <FooterHeading>The Delima Circle</FooterHeading>
-          <p className="mt-4 text-sm leading-relaxed text-[#f0e9dc]/60">
-            Monthly intel on Nairobi&rsquo;s finest listings — off-market homes reach the circle
-            first.
-          </p>
-          <form onSubmit={e => void subscribe(e)} className="mt-5 flex gap-2">
-            <Input
-              type="email"
-              required
-              value={email}
-              onChange={e => {
-                setEmail(e.target.value)
-                if (subscribeStatus === 'error') setSubscribeStatus('idle')
-              }}
-              placeholder="you@example.com"
-              aria-label="Email address for the Delima Circle newsletter"
-              className="h-11 min-h-[44px] flex-1 border-white/15 bg-white/5 text-[#f0e9dc] placeholder:text-[#f0e9dc]/40"
-            />
-            <Button
-              type="submit"
-              disabled={subscribeStatus === 'loading'}
-              aria-busy={subscribeStatus === 'loading'}
-              className="gold-gradient-bg h-11 min-h-[44px] gap-2 px-5 font-semibold text-[#1f1810] hover:opacity-90"
-            >
-              {subscribeStatus === 'loading' && (
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              )}
-              {subscribeStatus === 'loading' ? 'Joining…' : 'Join'}
-            </Button>
-          </form>
-          {subscribeStatus === 'error' && (
-            <p role="alert" className="mt-2 text-sm font-medium text-red-400">
-              Subscription failed — please try again
+        {/* contact + newsletter */}
+        <Reveal delay={0.18}>
+          <div>
+            <FooterHeading>Contact</FooterHeading>
+            <ul className="mt-4">
+              <li className="flex min-h-[44px] items-start gap-2.5 text-sm leading-relaxed text-white/65">
+                <MapPin className="mt-0.5 size-4 shrink-0 text-sun" aria-hidden="true" />
+                Ngong Lane Plaza, Ngong Road, Nairobi
+              </li>
+              <li>
+                <a
+                  href={AGENT_PHONE_TEL}
+                  className="flex min-h-[44px] items-center gap-2.5 text-sm text-white/65 transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
+                >
+                  <Phone className="size-4 shrink-0 text-sun" aria-hidden="true" />
+                  {AGENT_PHONE_DISPLAY}
+                </a>
+              </li>
+              <li>
+                <a
+                  href={`mailto:${AGENT_EMAIL}`}
+                  className="flex min-h-[44px] items-center gap-2.5 text-sm text-white/65 transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
+                >
+                  <Mail className="size-4 shrink-0 text-sun" aria-hidden="true" />
+                  {AGENT_EMAIL}
+                </a>
+              </li>
+              <li>
+                <a
+                  href={whatsappLink('+254727523752', 'Hello Delima Realtors!')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex min-h-[44px] items-center gap-2.5 text-sm text-white/65 transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
+                >
+                  <MessageCircle className="size-4 shrink-0 text-sun" aria-hidden="true" />
+                  WhatsApp us
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div className="mt-6">
+            <FooterHeading>Newsletter</FooterHeading>
+            <p className="mt-3 text-sm leading-relaxed text-white/60">
+              Monthly market intel on Nairobi&rsquo;s finest listings — off-market homes reach
+              subscribers first.
             </p>
-          )}
-          <p className="mt-3 text-[11px] text-[#f0e9dc]/40">
-            No spam. Unsubscribe anytime.
-          </p>
-        </div>
+            <form onSubmit={e => void subscribe(e)} className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <Input
+                type="email"
+                required
+                value={subEmail}
+                onChange={e => setSubEmail(e.target.value)}
+                placeholder="you@example.com"
+                aria-label="Email address for the Delima newsletter"
+                className="min-h-[44px] flex-1 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-sun"
+              />
+              <Button
+                type="submit"
+                disabled={subscribing}
+                aria-busy={subscribing}
+                className="btn-sun min-h-[44px] gap-2 rounded-full px-5 text-sm font-bold"
+              >
+                {subscribing && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                {subscribing ? 'Joining…' : 'Subscribe'}
+              </Button>
+            </form>
+            <p className="mt-2 text-[11px] text-white/40">No spam. Unsubscribe anytime.</p>
+          </div>
+        </Reveal>
       </div>
 
       {/* bottom bar */}
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-xs text-[#f0e9dc]/50 sm:flex-row sm:px-6 lg:px-8">
-          <p>© 2026 Delima Realtors · crafted in Nairobi</p>
-          <p className="flex items-center gap-2">
-            Nairobi · Kenya
-            <span className="gold-gradient-bg inline-block size-2 rotate-45 rounded-[2px]" aria-hidden="true" />
-          </p>
+        <div className="container-page flex flex-col items-center justify-between gap-2 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-xs text-white/45 sm:flex-row">
+          <p>© 2026 Delima Realtors. All rights reserved.</p>
+          <nav aria-label="Legal" className="flex items-center gap-5">
+            <a
+              href="#"
+              className="transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
+            >
+              Privacy
+            </a>
+            <a
+              href="#"
+              className="transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
+            >
+              Terms
+            </a>
+            <button
+              type="button"
+              onClick={openAdmin}
+              className="transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
+            >
+              Staff Login
+            </button>
+          </nav>
         </div>
       </div>
     </footer>

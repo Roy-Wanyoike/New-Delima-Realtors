@@ -1,33 +1,36 @@
-// Delima Realtors Platform 2.0 — Market Insights (issue #57)
-// "Nairobi Price Atlas" — KPIs, 12-month price curve, volume bars, heat table.
+// Delima Realtors 3.0 — Market Insights
+// "Nairobi Price Atlas" — KPI StatBlocks, 12-month price area curve, YoY bars,
+// volume bars, insight of the month and the neighborhood heat table.
+// All data transforms and navigation logic preserved from 2.0; charts now use
+// the frozen --chart-1..5 tokens (light mode only).
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Activity,
-  AlertTriangle,
   ArrowUpRight,
   Crown,
   Leaf,
+  LineChart,
   RotateCcw,
   Sparkles,
   TrendingUp,
 } from 'lucide-react'
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
+  Cell,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
   TableBody,
@@ -36,67 +39,31 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Container, EmptyState, Reveal, StatBlock } from '@/components/delima/ui-kit'
 import { useInsights } from '@/hooks/use-delima-data'
 import { useAppStore } from '@/lib/store'
 import { formatKes, formatMonth, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { LucideIcon } from 'lucide-react'
 
-/* theme-aware chart palette (no blue/indigo anywhere) */
-function useIsDark(): boolean {
-  const [dark, setDark] = useState(false)
-  useEffect(() => {
-    const el = document.documentElement
-    const update = () => setDark(el.classList.contains('dark'))
-    update()
-    const obs = new MutationObserver(update)
-    obs.observe(el, { attributes: true, attributeFilter: ['class'] })
-    return () => obs.disconnect()
-  }, [])
-  return dark
-}
+const TERRACOTTA = '#b4552d' // warm terracotta for negative YoY (never default red)
 
-const CLAY_NEGATIVE = '#b4552d' // warm terracotta for negative YoY (never default red)
-
-function KpiCard({
-  icon: Icon, label, value, sub,
-}: {
-  icon: LucideIcon
-  label: string
-  value: string
-  sub: string
-}) {
-  return (
-    <Card className="luxury-card border-border/70">
-      <CardContent className="p-6">
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-full bg-gold/15 text-gold-deep dark:text-gold" aria-hidden="true">
-            <Icon className="size-4.5" />
-          </span>
-          <p className="eyebrow">{label}</p>
-        </div>
-        <p className="mt-3 font-display text-2xl leading-tight md:text-[1.7rem]">{value}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
-      </CardContent>
-    </Card>
-  )
-}
-
+/* Shared, light-mode chart chrome */
 const tooltipStyle = {
-  backgroundColor: '#1f1810',
-  border: '1px solid #d4af37',
-  borderRadius: 10,
-  boxShadow: '0 18px 45px -18px rgba(31,24,16,0.45)',
+  backgroundColor: '#ffffff',
+  border: '1px solid var(--line)',
+  borderRadius: 12,
+  boxShadow: '0 12px 30px -12px rgba(12, 59, 46, 0.25)',
   fontSize: 12,
   padding: '8px 12px',
 }
-const tooltipLabel = { color: '#e9d8a6', fontWeight: 700, marginBottom: 2 }
-const tooltipItem = { color: '#faf7f1' }
+const tooltipLabel = { color: 'var(--muted-foreground)', fontWeight: 600, marginBottom: 2 }
+const tooltipItem = { color: 'var(--ink)', fontWeight: 700 }
+const tickStyle = { fill: 'var(--muted-foreground)', fontSize: 12 }
+const axisLine = { stroke: 'var(--line)' }
 
 function AtlasContent({ onRetry }: { onRetry: () => void }) {
   const { insights, loading, error } = useInsights()
   const setFilterAndGo = useAppStore((s) => s.setFilterAndGo)
-  const dark = useIsDark()
   const [selected, setSelected] = useState<string>('ALL')
 
   const nbs = insights?.neighborhoods ?? []
@@ -125,6 +92,11 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
     })
   }, [nbs, selected])
 
+  const yoyData = useMemo(
+    () => nbs.map((n) => ({ name: n.name, yoy: n.latestYoY })).sort((a, b) => b.yoy - a.yoy),
+    [nbs],
+  )
+
   const barData = useMemo(
     () => nbs.map((n) => ({ name: n.name, volume: n.totalVolume12m })).sort((a, b) => b.volume - a.volume),
     [nbs],
@@ -145,22 +117,18 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
     return { strongest, latestMonth }
   }, [nbs, kpis])
 
-  const gold = dark ? '#d4af37' : '#c9a227'
-  const grid = dark ? '#3a2f1e' : '#e5dcc8'
-  const tick = dark ? '#b3a58a' : '#6f6350'
-
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" aria-busy="true" aria-label="Loading market data">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
+            <Skeleton key={i} className="shimmer h-28 rounded-2xl" />
           ))}
         </div>
-        <Skeleton className="h-80 rounded-2xl" />
+        <Skeleton className="shimmer h-80 rounded-2xl" />
         <div className="grid gap-6 xl:grid-cols-2">
-          <Skeleton className="h-72 rounded-2xl" />
-          <Skeleton className="h-72 rounded-2xl" />
+          <Skeleton className="shimmer h-72 rounded-2xl" />
+          <Skeleton className="shimmer h-72 rounded-2xl" />
         </div>
       </div>
     )
@@ -168,79 +136,82 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
 
   if (error || !insights || !nbs.length) {
     return (
-      <Card className="mx-auto max-w-lg border-gold/30 luxury-shadow">
-        <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
-          <span className="flex size-14 items-center justify-center rounded-full bg-gold/15 text-gold-deep dark:text-gold">
-            <AlertTriangle className="size-7" />
-          </span>
-          <div>
-            <h3 className="font-display text-xl">Market data unavailable</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{error ?? 'No neighborhood statistics were returned.'}</p>
-          </div>
-          <Button onClick={onRetry} className="h-11 min-w-[140px] gold-gradient-bg border-0 text-espresso hover:opacity-90">
-            <RotateCcw className="size-4" /> Try again
+      <EmptyState
+        icon={LineChart}
+        title="Market data unavailable"
+        description={error ?? 'No neighborhood statistics were returned.'}
+        action={
+          <Button onClick={onRetry} className="rounded-full">
+            <RotateCcw className="size-4" aria-hidden="true" /> Try again
           </Button>
-        </CardContent>
-      </Card>
+        }
+        className="mx-auto max-w-lg"
+      />
     )
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* KPI row */}
       {kpis && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard
-            icon={TrendingUp}
-            label="Avg YoY appreciation"
-            value={`${kpis.avgYoY >= 0 ? '+' : ''}${kpis.avgYoY.toFixed(1)}%`}
-            sub="mean latest YoY across all neighborhoods"
-          />
-          <KpiCard
-            icon={Activity}
-            label="Most active"
-            value={kpis.mostActive.name}
-            sub={`${kpis.mostActive.totalVolume12m} transactions in 12 months`}
-          />
-          <KpiCard
-            icon={Crown}
-            label="Premium address"
-            value={kpis.premium.name}
-            sub={`${formatKes(kpis.premium.avgPricePerSqm)} per sqm average`}
-          />
-          <KpiCard
-            icon={Leaf}
-            label="Value pick"
-            value={kpis.value.name}
-            sub={`${formatKes(kpis.value.avgPricePerSqm)} per sqm average`}
-          />
-        </div>
+        <Reveal>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatBlock
+              icon={TrendingUp}
+              value={`${kpis.avgYoY >= 0 ? '+' : ''}${kpis.avgYoY.toFixed(1)}%`}
+              label="Avg YoY appreciation — all neighborhoods"
+            />
+            <StatBlock
+              icon={Activity}
+              value={kpis.mostActive.name}
+              label={`Most active — ${kpis.mostActive.totalVolume12m} transactions in 12 months`}
+            />
+            <StatBlock
+              icon={Crown}
+              value={kpis.premium.name}
+              label={`Premium address — ${formatKes(kpis.premium.avgPricePerSqm)} / sqm average`}
+            />
+            <StatBlock
+              icon={Leaf}
+              value={kpis.value.name}
+              label={`Value pick — ${formatKes(kpis.value.avgPricePerSqm)} / sqm average`}
+            />
+          </div>
+        </Reveal>
       )}
 
       {/* price curve */}
-      <Card className="border-border/70 luxury-shadow">
-        <CardContent className="p-4 md:p-6">
+      <Reveal delay={0.05}>
+        <section className="card-modern rounded-2xl p-5">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="eyebrow">Price curve</p>
-              <h3 className="mt-1 font-display text-xl">KES per sqm — trailing twelve months</h3>
+              <h3 className="mt-1 text-xl font-bold">KES per sqm — trailing twelve months</h3>
             </div>
-            <Tabs value={selected} onValueChange={setSelected}>
-              <TabsList className="delima-scroll h-auto w-full max-w-full justify-start overflow-x-auto sm:w-auto">
-                <TabsTrigger value="ALL" className="shrink-0">All (avg)</TabsTrigger>
+            <Select value={selected} onValueChange={setSelected}>
+              <SelectTrigger aria-label="Choose neighborhood" className="h-11 w-full rounded-xl sm:w-[240px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All neighborhoods (avg)</SelectItem>
                 {nbs.map((n) => (
-                  <TabsTrigger key={n.slug} value={n.slug} className="shrink-0">{n.name}</TabsTrigger>
+                  <SelectItem key={n.slug} value={n.slug}>{n.name}</SelectItem>
                 ))}
-              </TabsList>
-            </Tabs>
+              </SelectContent>
+            </Select>
           </div>
           <div className="h-64 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={lineData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-                <CartesianGrid stroke={grid} strokeDasharray="3 6" vertical={false} />
-                <XAxis dataKey="month" tick={{ fill: tick, fontSize: 11 }} tickLine={false} axisLine={{ stroke: grid }} />
+              <AreaChart data={lineData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="atlasSunFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.32} />
+                    <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" tick={tickStyle} tickLine={false} axisLine={axisLine} />
                 <YAxis
-                  tick={{ fill: tick, fontSize: 11 }}
+                  tick={tickStyle}
                   tickLine={false}
                   axisLine={false}
                   width={58}
@@ -253,118 +224,155 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
                   itemStyle={tooltipItem}
                   formatter={(v) => [formatKes(Number(v)), 'KES / sqm']}
                 />
-                <Line
+                <Area
                   type="monotone"
                   dataKey="kes"
-                  stroke={gold}
+                  stroke="var(--chart-1)"
                   strokeWidth={2.5}
-                  dot={{ r: 2.5, fill: gold, strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: gold, stroke: '#1f1810', strokeWidth: 1.5 }}
+                  fill="url(#atlasSunFill)"
+                  dot={false}
+                  activeDot={{ r: 4, fill: 'var(--chart-1)', stroke: '#ffffff', strokeWidth: 2 }}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
+        </section>
+      </Reveal>
 
-      {/* volume bars */}
+      {/* YoY + volume */}
       <div className="grid gap-6 xl:grid-cols-2">
-        <Card className="border-border/70 luxury-shadow">
-          <CardContent className="p-4 md:p-6">
+        <Reveal delay={0.08}>
+          <section className="card-modern h-full rounded-2xl p-5">
+            <p className="eyebrow">Year-on-year momentum</p>
+            <h3 className="mt-1 text-xl font-bold">Latest YoY change per neighborhood</h3>
+            <div className="mt-4 h-64 md:h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={yoyData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                  <XAxis
+                    dataKey="name"
+                    tick={tickStyle}
+                    tickLine={false}
+                    axisLine={axisLine}
+                    interval={0}
+                    angle={-30}
+                    textAnchor="end"
+                    height={64}
+                  />
+                  <YAxis
+                    tick={tickStyle}
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                    tickFormatter={(v: number) => `${v}%`}
+                  />
+                  <ReferenceLine y={0} stroke="var(--line)" />
+                  <Tooltip
+                    cursor={{ fill: 'var(--muted)', opacity: 0.5 }}
+                    contentStyle={tooltipStyle}
+                    labelStyle={tooltipLabel}
+                    itemStyle={tooltipItem}
+                    formatter={(v) => [`${Number(v).toFixed(1)}% YoY`, 'Growth']}
+                  />
+                  <Bar dataKey="yoy" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                    {yoyData.map((d) => (
+                      <Cell key={d.name} fill={d.yoy >= 0 ? 'var(--chart-1)' : TERRACOTTA} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        </Reveal>
+
+        <Reveal delay={0.12}>
+          <section className="card-modern h-full rounded-2xl p-5">
             <p className="eyebrow">Transaction volume</p>
-            <h3 className="mt-1 font-display text-xl">Volume traded per neighborhood — 12 months</h3>
+            <h3 className="mt-1 text-xl font-bold">Volume traded per neighborhood — 12 months</h3>
             <div className="mt-4 h-64 md:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                  <CartesianGrid stroke={grid} strokeDasharray="3 6" vertical={false} />
                   <XAxis
                     dataKey="name"
-                    tick={{ fill: tick, fontSize: 10 }}
+                    tick={tickStyle}
                     tickLine={false}
-                    axisLine={{ stroke: grid }}
+                    axisLine={axisLine}
                     interval={0}
-                    angle={-28}
+                    angle={-30}
                     textAnchor="end"
-                    height={58}
+                    height={64}
                   />
-                  <YAxis
-                    tick={{ fill: tick, fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={52}
-                    tickFormatter={(v: number) => `${v}`}
-                  />
+                  <YAxis tick={tickStyle} tickLine={false} axisLine={false} width={48} />
                   <Tooltip
-                    cursor={{ fill: gold, opacity: 0.08 }}
+                    cursor={{ fill: 'var(--sun)', opacity: 0.08 }}
                     contentStyle={tooltipStyle}
                     labelStyle={tooltipLabel}
                     itemStyle={tooltipItem}
                     formatter={(v) => [`${v} transactions`, '12m volume']}
                   />
-                  <Bar dataKey="volume" fill={gold} radius={[6, 6, 0, 0]} maxBarSize={42} />
+                  <Bar dataKey="volume" fill="var(--chart-2)" radius={[8, 8, 0, 0]} maxBarSize={42} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* insight of the month */}
-        {insight && (
-          <Card className="relative overflow-hidden border-gold/40 luxury-shadow">
-            <div aria-hidden="true" className="gold-gradient-bg absolute inset-x-0 top-0 h-1" />
-            <CardContent className="flex h-full flex-col p-6">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-9 items-center justify-center rounded-full bg-gold/15 text-gold-deep dark:text-gold" aria-hidden="true">
-                  <Sparkles className="size-4.5" />
-                </span>
-                <p className="eyebrow">Insight of the month</p>
-              </div>
-              <p className="mt-4 font-display text-2xl leading-snug">
-                {insight.strongest.name} leads Nairobi appreciation at{' '}
-                <span className="gold-gradient-text font-bold">
-                  {insight.strongest.latestYoY >= 0 ? '+' : ''}{insight.strongest.latestYoY.toFixed(1)}% YoY
-                </span>
-              </p>
-              <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                Median pricing in {insight.strongest.name} reached{' '}
-                <span className="font-semibold text-foreground">
-                  {formatKes(insight.strongest.series.at(-1)?.medianPriceKes ?? 0)}
-                </span>{' '}
-                in {formatMonth(insight.latestMonth)}. Across the atlas, values averaged{' '}
-                <span className="font-semibold text-foreground">
-                  {kpis && `${kpis.avgYoY >= 0 ? '+' : ''}${kpis.avgYoY.toFixed(1)}%`}
-                </span>{' '}
-                year-on-year, while {kpis?.value.name} remains the smartest entry point at{' '}
-                <span className="font-semibold text-foreground">{formatKes(kpis?.value.avgPricePerSqm ?? 0)}/sqm</span> —
-                a {Math.round(((kpis?.premium.avgPricePerSqm ?? 0) / (kpis?.value.avgPricePerSqm ?? 1) - 1) * 100)}%
-                gap to the premium {kpis?.premium.name} tier.
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => setFilterAndGo({ neighborhood: insight.strongest.slug }, 'properties')}
-                className="mt-5 h-11 w-fit border-gold/40 hover:bg-gold/10 hover:text-gold-deep dark:hover:text-gold"
-              >
-                Explore {insight.strongest.name} listings <ArrowUpRight className="size-4" />
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+          </section>
+        </Reveal>
       </div>
 
+      {/* insight of the month */}
+      {insight && kpis && (
+        <Reveal delay={0.05}>
+          <section className="card-modern relative overflow-hidden rounded-2xl p-5 sm:p-6">
+            <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sun via-sun-deep to-brand" />
+            <div className="flex items-center gap-2.5">
+              <span className="flex size-9 items-center justify-center rounded-2xl bg-sun-soft text-sun-deep" aria-hidden="true">
+                <Sparkles className="size-4.5" />
+              </span>
+              <p className="eyebrow">Insight of the month</p>
+            </div>
+            <p className="mt-4 text-xl font-extrabold leading-snug sm:text-2xl">
+              {insight.strongest.name} leads Nairobi appreciation at{' '}
+              <span className="text-gradient-brand">
+                {insight.strongest.latestYoY >= 0 ? '+' : ''}{insight.strongest.latestYoY.toFixed(1)}% YoY
+              </span>
+            </p>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              Median pricing in {insight.strongest.name} reached{' '}
+              <span className="font-semibold text-foreground">
+                {formatKes(insight.strongest.series.at(-1)?.medianPriceKes ?? 0)}
+              </span>{' '}
+              in {formatMonth(insight.latestMonth)}. Across the atlas, values averaged{' '}
+              <span className="font-semibold text-foreground">
+                {kpis.avgYoY >= 0 ? '+' : ''}{kpis.avgYoY.toFixed(1)}%
+              </span>{' '}
+              year-on-year, while {kpis.value.name} remains the smartest entry point at{' '}
+              <span className="font-semibold text-foreground">{formatKes(kpis.value.avgPricePerSqm)}/sqm</span> —
+              a {Math.round(((kpis.premium.avgPricePerSqm) / (kpis.value.avgPricePerSqm) - 1) * 100)}%
+              gap to the premium {kpis.premium.name} tier.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setFilterAndGo({ neighborhood: insight.strongest.slug }, 'properties')}
+              className="mt-5 h-11 w-fit rounded-full border-line hover:bg-brand-soft hover:text-brand"
+            >
+              Explore {insight.strongest.name} listings <ArrowUpRight className="size-4" aria-hidden="true" />
+            </Button>
+          </section>
+        </Reveal>
+      )}
+
       {/* heat table */}
-      <Card className="border-border/70 luxury-shadow">
-        <CardContent className="p-4 md:p-6">
+      <Reveal delay={0.08}>
+        <section className="card-modern rounded-2xl p-5">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
             <div>
               <p className="eyebrow">Neighborhood heat table</p>
-              <h3 className="mt-1 font-display text-xl">Latest figures, ranked by KES / sqm</h3>
+              <h3 className="mt-1 text-xl font-bold">Latest figures, ranked by KES / sqm</h3>
             </div>
             <p className="text-xs text-muted-foreground">Click a row to browse its listings</p>
           </div>
-          <div className="overflow-hidden rounded-xl border">
+          <div className="overflow-hidden rounded-2xl border border-line bg-white">
             <Table>
               <TableHeader>
-                <TableRow className="bg-sand/70 hover:bg-sand/70 dark:bg-accent/40 dark:hover:bg-accent/40">
+                <TableRow className="bg-brand-soft/50 hover:bg-brand-soft/50">
                   <TableHead className="uppercase tracking-wider">Neighborhood</TableHead>
                   <TableHead className="uppercase tracking-wider">Median price</TableHead>
                   <TableHead className="uppercase tracking-wider">KES / sqm</TableHead>
@@ -388,12 +396,15 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
                       <TableCell>{formatKes(n.latestMedian)}</TableCell>
                       <TableCell
                         className="font-medium"
-                        style={{ backgroundColor: dark ? `rgba(212,175,55,${heatAlpha})` : `rgba(201,162,39,${heatAlpha})` }}
+                        style={{ backgroundColor: `rgba(232, 163, 61, ${heatAlpha})` }}
                       >
                         {formatKes(n.avgPricePerSqm)}
                       </TableCell>
                       <TableCell>
-                        <span className={cn('font-bold', pos ? 'text-gold-deep dark:text-gold' : '')} style={!pos ? { color: CLAY_NEGATIVE } : undefined}>
+                        <span
+                          className={cn('font-bold', pos && 'text-brand')}
+                          style={!pos ? { color: TERRACOTTA } : undefined}
+                        >
                           {pos ? '+' : ''}{n.latestYoY.toFixed(1)}%
                         </span>
                       </TableCell>
@@ -407,8 +418,8 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
               </TableBody>
             </Table>
           </div>
-        </CardContent>
-      </Card>
+        </section>
+      </Reveal>
     </div>
   )
 }
@@ -418,16 +429,20 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
 export default function InsightsView() {
   const [attempt, setAttempt] = useState(0)
   return (
-    <div className="space-y-8">
-      <header className="max-w-2xl">
-        <p className="eyebrow">Market Intelligence</p>
-        <h2 className="gold-underline mt-2 font-display text-3xl md:text-4xl">Nairobi Price Atlas</h2>
-        <p className="mt-4 text-sm leading-relaxed text-muted-foreground md:text-base">
-          Twelve months of data across Delima&apos;s neighborhoods — price curves, traded volume and
-          year-on-year momentum, distilled into one view.
-        </p>
-      </header>
-      <AtlasContent key={attempt} onRetry={() => setAttempt((a) => a + 1)} />
-    </div>
+    <Container className="py-10 sm:py-16">
+      <Reveal>
+        <header className="max-w-2xl">
+          <p className="eyebrow">Market intelligence</p>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">Nairobi Price Atlas</h1>
+          <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+            Twelve months of data across Delima&apos;s neighborhoods — price curves, traded volume and
+            year-on-year momentum, distilled into one view.
+          </p>
+        </header>
+      </Reveal>
+      <div className="mt-10">
+        <AtlasContent key={attempt} onRetry={() => setAttempt((a) => a + 1)} />
+      </div>
+    </Container>
   )
 }

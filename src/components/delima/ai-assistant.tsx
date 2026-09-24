@@ -1,24 +1,32 @@
-// Delima Realtors Platform 2.0 — Delima AI floating concierge (issue #55)
-// Floating widget + chat. Server SDK is called only inside /api/assistant.
+// Delima Realtors 3.0 — Delima AI floating concierge
+// Floating launcher + chat panel. The server SDK is called ONLY inside /api/assistant.
+//
+// Positioning is coordinated with WhatsAppFloat (ui-kit, frozen): it sits at
+// right-4 bottom-20 (icon-only pill ≈48px wide) on mobile and right-4 bottom-6
+// with its label expanded (≈145px wide) on sm+. This launcher therefore stacks
+// to the LEFT of it at every breakpoint — right-[5.5rem] clears the mobile
+// icon pill, sm:right-[10.5rem] clears the expanded desktop pill.
 'use client'
 
+import type { ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bot, Home, RotateCcw, Send, X } from 'lucide-react'
+import { MessageCircle, Phone, RotateCcw, Send, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
 import { useAppStore } from '@/lib/store'
-import { formatPriceForStatus, typeLabel } from '@/lib/format'
-import type { AssistantMsg, AssistantResponse, PropertyDTO } from '@/lib/types'
+import { PropertyMiniCard } from '@/components/delima/mini-cards'
+import type { AssistantMsg, AssistantResponse } from '@/lib/types'
 import { cn, fetchWithTimeout } from '@/lib/utils'
 
-const SUGGESTIONS = [
-  'Villas in Karen under KES 100M',
-  '2-bed apartments in Kilimani',
-  'Best investment areas',
-  'Family home in Runda with garden',
+type QuickPrompt = { label: string; kind: 'chat' | 'valuation' }
+
+const QUICK_PROMPTS: QuickPrompt[] = [
+  { label: 'Villas in Karen under KES 80M', kind: 'chat' },
+  { label: '3-bed apartments in Kilimani', kind: 'chat' },
+  { label: "What's my home worth?", kind: 'valuation' },
 ]
 
 const GREETING: AssistantMsg = {
@@ -27,46 +35,47 @@ const GREETING: AssistantMsg = {
     "Karibu! I'm Delima AI, your Nairobi property concierge. Ask me to find villas, apartments or investment gems — I know every listing in our portfolio.",
 }
 
-function Thumb({ src, alt, className }: { src?: string; alt: string; className?: string }) {
-  const [err, setErr] = useState(false)
-  if (!src || err) {
-    return (
-      <div className={cn('gold-gradient-bg flex shrink-0 items-center justify-center text-espresso', className)} aria-hidden="true">
-        <Home className="size-4" />
-      </div>
-    )
+/**
+ * Lightweight markdown rendering for assistant replies: **bold**, *italic*
+ * and `code` spans. Text is split into plain React nodes, so content stays
+ * safely escaped (no dangerouslySetInnerHTML).
+ */
+function RichText({ text }: { text: string }) {
+  const nodes: ReactNode[] = []
+  const re = /\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`/g
+  let last = 0
+  let match: RegExpExecArray | null
+  let key = 0
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) nodes.push(text.slice(last, match.index))
+    if (match[1] !== undefined) {
+      nodes.push(
+        <strong key={key++} className="font-bold">
+          {match[1]}
+        </strong>,
+      )
+    } else if (match[2] !== undefined) {
+      nodes.push(<em key={key++}>{match[2]}</em>)
+    } else if (match[3] !== undefined) {
+      nodes.push(
+        <code key={key++} className="rounded bg-brand-soft px-1 py-0.5 font-mono text-[0.8em] text-brand">
+          {match[3]}
+        </code>,
+      )
+    }
+    last = re.lastIndex
   }
-  return (
-    <img src={src} alt={alt} loading="lazy" onError={() => setErr(true)} className={cn('shrink-0 object-cover', className)} />
-  )
+  if (last < text.length) nodes.push(text.slice(last))
+  return <>{nodes}</>
 }
 
 function TypingDots() {
   return (
     <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm bg-muted px-4 py-3" aria-label="Delima AI is typing">
       {[0, 1, 2].map((i) => (
-        <span key={i} className="size-1.5 animate-bounce rounded-full bg-gold" style={{ animationDelay: `${i * 0.15}s` }} />
+        <span key={i} className="size-1.5 animate-bounce rounded-full bg-sun" style={{ animationDelay: `${i * 0.15}s` }} />
       ))}
     </div>
-  )
-}
-
-function PropertyCard({ p, onOpen }: { p: PropertyDTO; onOpen: (slug: string) => void }) {
-  return (
-    <button
-      onClick={() => onOpen(p.slug)}
-      aria-label={`Open ${p.title}, ${formatPriceForStatus(p.priceKes, p.status)}`}
-      className="flex w-full items-center gap-3 border-b p-2 text-left transition-colors last:border-b-0 hover:bg-sand/70 dark:hover:bg-accent/60"
-    >
-      <Thumb src={p.images[0]} alt={p.title} className="h-12 w-12 rounded-lg" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-xs font-semibold">{p.title}</span>
-        <span className="block truncate text-[11px] text-muted-foreground">
-          {p.neighborhood} · {typeLabel[p.type]} · {p.bedrooms} bed{p.bedrooms === 1 ? '' : 's'}
-        </span>
-        <span className="block text-xs font-bold text-gold-deep dark:text-gold">{formatPriceForStatus(p.priceKes, p.status)}</span>
-      </span>
-    </button>
   )
 }
 
@@ -74,7 +83,8 @@ export function AiAssistant() {
   const open = useAppStore((s) => s.assistantOpen)
   const setOpen = useAppStore((s) => s.setAssistantOpen)
   const openProperty = useAppStore((s) => s.openProperty)
-  const setFilters = useAppStore((s) => s.setFilters)
+  const setFilterAndGo = useAppStore((s) => s.setFilterAndGo)
+  const setView = useAppStore((s) => s.setView)
   const { toast } = useToast()
 
   const [messages, setMessages] = useState<AssistantMsg[]>([GREETING])
@@ -118,8 +128,10 @@ export function AiAssistant() {
       const data = (await res.json()) as AssistantResponse
       setMessages((prev) => [...prev, { role: 'assistant', content: data.reply, properties: data.properties }])
       if (data.filters && Object.keys(data.filters).length > 0) {
-        setFilters(data.filters)
-        toast({ title: 'Search filters updated', description: 'Your chat refined the active search — open Map or Listings to see matches.' })
+        // Filter handoff: the chat refines the shared search and jumps to the
+        // listings grid so the matches are immediately visible.
+        setFilterAndGo(data.filters)
+        toast({ title: 'Search filters applied', description: 'Your chat refined the active search — here are the matches.' })
       }
     } catch (e) {
       const isAbort = e instanceof Error && (e.name === 'AbortError' || /abort/i.test(e.message))
@@ -149,9 +161,18 @@ export function AiAssistant() {
     void transmit(messages)
   }
 
+  const runQuickPrompt = (p: QuickPrompt) => {
+    if (p.kind === 'valuation') {
+      setOpen(false)
+      setView('valuation')
+      return
+    }
+    send(p.label)
+  }
+
   return (
     <>
-      {/* collapsed — gold FAB */}
+      {/* collapsed — evergreen launcher, left of the WhatsApp float */}
       <AnimatePresence>
         {!open && (
           <motion.div
@@ -160,16 +181,16 @@ export function AiAssistant() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.6 }}
             transition={{ type: 'spring', stiffness: 380, damping: 24 }}
-            className="fixed bottom-6 right-4 z-50 md:right-6"
+            className="fixed bottom-20 right-[5.5rem] z-50 sm:bottom-6 sm:right-[10.5rem]"
           >
             <Button
               size="icon"
-              aria-label="Open AI assistant"
+              aria-label="Open Delima AI assistant"
               onClick={() => setOpen(true)}
-              className="relative size-14 rounded-full border-0 gold-gradient-bg text-espresso luxury-shadow transition-transform hover:scale-105"
+              className="relative size-14 rounded-full border-0 bg-brand text-white shadow-xl transition-transform hover:scale-105 hover:bg-brand-mid"
             >
-              <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-gold/40" />
-              <Bot className="relative size-6" />
+              <MessageCircle className="relative size-6" aria-hidden="true" />
+              <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 size-3.5 rounded-full bg-sun ring-2 ring-white" />
             </Button>
           </motion.div>
         )}
@@ -180,51 +201,57 @@ export function AiAssistant() {
         {open && (
           <motion.section
             key="panel"
-            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            initial={{ opacity: 0, y: 20, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 24, scale: 0.97 }}
+            exit={{ opacity: 0, y: 20, scale: 0.96 }}
             transition={{ type: 'spring', stiffness: 320, damping: 28 }}
             role="dialog"
             aria-label="Delima AI assistant chat"
-            className="fixed bottom-24 right-4 z-50 flex h-[70vh] max-h-[640px] w-[92vw] flex-col overflow-hidden rounded-xl border bg-card luxury-shadow md:right-6 md:w-[400px]"
+            className="fixed bottom-24 right-4 z-50 flex h-[70vh] max-h-[640px] w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-line bg-white soft-shadow sm:right-6 sm:w-[400px]"
           >
             {/* header */}
-            <header className="flex items-center gap-3 border-b bg-sand/70 px-4 py-3 dark:bg-accent/50">
-              <span className="gold-gradient-bg flex size-9 shrink-0 items-center justify-center rounded-full text-espresso" aria-hidden="true">
-                <Bot className="size-5" />
+            <header className="flex items-center gap-3 border-b border-line px-4 py-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand text-white" aria-hidden="true">
+                <Sparkles className="size-5" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-display text-base leading-tight">Delima AI</p>
-                <p className="text-[11px] text-muted-foreground">Nairobi property concierge</p>
+                <p className="text-base font-bold leading-tight">Delima AI</p>
+                <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="relative flex size-2" aria-hidden="true">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-mid opacity-60" />
+                    <span className="relative inline-flex size-2 rounded-full bg-brand-mid" />
+                  </span>
+                  Online · replies in seconds
+                </p>
               </div>
               <Button
                 size="icon"
                 variant="ghost"
                 aria-label="Close AI assistant"
                 onClick={() => setOpen(false)}
-                className="size-11 shrink-0 rounded-full hover:bg-gold/15 hover:text-gold-deep dark:hover:text-gold"
+                className="size-11 shrink-0 rounded-full hover:bg-brand-soft hover:text-brand"
               >
-                <X className="size-4.5" />
+                <X className="size-5" aria-hidden="true" />
               </Button>
             </header>
 
             {/* messages */}
-            <ScrollArea className="flex-1">
-              <div className="flex flex-col gap-3 px-4 py-4">
+            <ScrollArea className="min-h-0 flex-1">
+              <div role="log" aria-live="polite" aria-label="Conversation with Delima AI" className="flex flex-col gap-3 px-4 py-4">
                 {messages.map((m, i) => (
                   <div key={i} className={cn('flex flex-col gap-2', m.role === 'user' ? 'items-end' : 'items-start')}>
                     <div
                       className={cn(
                         'max-w-[88%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed',
-                        m.role === 'user' ? 'rounded-br-sm bg-gold text-espresso' : 'rounded-bl-sm bg-muted text-foreground',
+                        m.role === 'user' ? 'rounded-br-sm bg-brand text-white' : 'rounded-bl-sm bg-muted text-foreground',
                       )}
                     >
-                      {m.content}
+                      {m.role === 'assistant' ? <RichText text={m.content} /> : m.content}
                     </div>
                     {m.properties && m.properties.length > 0 && (
-                      <div className="w-[96%] overflow-hidden rounded-xl border bg-background">
+                      <div className="w-[96%] space-y-2">
                         {m.properties.map((p) => (
-                          <PropertyCard key={p.slug} p={p} onOpen={openProperty} />
+                          <PropertyMiniCard key={p.slug} property={p} />
                         ))}
                       </div>
                     )}
@@ -247,16 +274,22 @@ export function AiAssistant() {
               </div>
             </ScrollArea>
 
-            {/* suggested prompts (until the first user message) */}
+            {/* quick prompts (until the first user message) */}
             {messages.length === 1 && !sending && (
               <div className="flex flex-wrap gap-2 px-4 pb-3">
-                {SUGGESTIONS.map((s) => (
+                {QUICK_PROMPTS.map((p) => (
                   <button
-                    key={s}
-                    onClick={() => send(s)}
-                    className="flex min-h-[44px] items-center rounded-full border border-gold/40 bg-gold/10 px-3.5 text-[11px] font-semibold text-gold-deep transition-colors hover:bg-gold/20 dark:text-gold"
+                    key={p.label}
+                    onClick={() => runQuickPrompt(p)}
+                    className={cn(
+                      'flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors',
+                      p.kind === 'valuation'
+                        ? 'border-brand bg-brand text-white hover:bg-brand-mid'
+                        : 'border-line bg-sun-soft text-sun-deep hover:border-sun/50 hover:bg-sun/20',
+                    )}
                   >
-                    {s}
+                    {p.kind === 'valuation' && <Sparkles className="size-3.5" aria-hidden="true" />}
+                    {p.label}
                   </button>
                 ))}
               </div>
@@ -264,17 +297,20 @@ export function AiAssistant() {
 
             {/* error + human fallback */}
             {error && (
-              <div className="mx-4 mb-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs">
+              <div className="mx-4 mb-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-xs">
                 <p>{error}. Please try again.</p>
                 <div className="mt-1 flex items-center gap-4">
                   <button
                     onClick={retry}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 font-bold text-gold-deep dark:text-gold"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 font-bold text-destructive"
                   >
-                    <RotateCcw className="size-3.5" /> Retry
+                    <RotateCcw className="size-3.5" aria-hidden="true" /> Retry
                   </button>
-                  <a href="tel:+254727523752" className="inline-flex min-h-[44px] items-center underline underline-offset-2 hover:text-gold-deep dark:hover:text-gold">
-                    Prefer a human? Call +254 727 523 752
+                  <a
+                    href="tel:+254727523752"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 underline underline-offset-2 hover:text-brand"
+                  >
+                    <Phone className="size-3.5" aria-hidden="true" /> Prefer a human? Call +254 727 523 752
                   </a>
                 </div>
               </div>
@@ -283,7 +319,7 @@ export function AiAssistant() {
             {/* input row */}
             <form
               onSubmit={(e) => { e.preventDefault(); send(input) }}
-              className="flex items-center gap-2 border-t bg-sand/50 px-3 py-3 dark:bg-accent/30"
+              className="flex items-center gap-2 border-t border-line bg-paper/60 px-3 py-3"
             >
               <Input
                 value={input}
@@ -291,16 +327,16 @@ export function AiAssistant() {
                 placeholder="Ask about Nairobi property…"
                 aria-label="Message Delima AI"
                 disabled={sending}
-                className="h-11 flex-1 rounded-full bg-background"
+                className="h-11 flex-1 rounded-full border-line bg-white"
               />
               <Button
                 type="submit"
                 size="icon"
                 aria-label="Send message"
                 disabled={sending || !input.trim()}
-                className="size-11 shrink-0 rounded-full border-0 gold-gradient-bg text-espresso hover:opacity-90"
+                className="size-11 shrink-0 rounded-full border-0 bg-brand text-white hover:bg-brand-mid"
               >
-                <Send className="size-4" />
+                <Send className="size-4" aria-hidden="true" />
               </Button>
             </form>
           </motion.section>
