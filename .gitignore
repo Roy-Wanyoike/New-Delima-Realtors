@@ -60,6 +60,10 @@ upload/
 download/
 worklog.md
 scripts/
+# sandbox/agent working notes & infra — never part of the shipped product
+.zscripts/
+agent-ctx/
+mini-services/
 # keep the committed env template
 !.env.example
 # runtime database (regenerate via prisma db push + seed)
