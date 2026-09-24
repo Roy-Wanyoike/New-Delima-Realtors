@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Quality gate before Vercel picks up `main`: lint → typecheck → seeded test suite.
+# The tests read the seeded SQLite DB at the sandbox path, so CI reproduces it
+# with a symlink and provisions schema + seed data exactly like local dev.
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Reproduce sandbox DB path
+        run: sudo mkdir -p /home/z && sudo ln -s "$PWD" /home/z/my-project
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: |
+          bunx next typegen
+          bunx tsc --noEmit
+
+      - name: Provision database (schema + seed)
+        env:
+          DATABASE_URL: file:/home/z/my-project/db/custom.db
+        run: |
+          bunx prisma db push --skip-generate
+          bun prisma/seed.ts
+
+      - name: Tests
+        run: bun run test
