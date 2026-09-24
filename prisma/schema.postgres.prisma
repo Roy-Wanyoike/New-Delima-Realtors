@@ -1,0 +1,127 @@
+// Delima Realtors — Postgres schema (Supabase / Vercel production)
+//
+// The sandbox (and local development) use `schema.prisma` (SQLite). Vercel
+// deployments generate the client from THIS schema instead — see
+// `buildCommand` in vercel.json — because serverless functions need a network
+// database (Supabase Postgres), not a local file.
+//
+// One-time provisioning from your machine, with DATABASE_URL pointing at the
+// Supabase session pooler (port 5432):
+//   npm run db:pg:push      # create tables
+//   npm run db:pg:seed      # load the Nairobi catalogue
+//
+// The models are identical to schema.prisma. Keep both files in sync.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Neighborhood {
+  id             String       @id @default(cuid())
+  slug           String       @unique
+  name           String
+  description    String
+  lat            Float
+  lng            Float
+  // Map polygon as JSON array of [lat,lng] pairs
+  polygon        String       @default("[]")
+  avgPricePerSqm Int
+  image          String
+  highlights     String       @default("[]") // JSON string[]
+  properties     Property[]
+  marketStats    MarketStat[]
+  createdAt      DateTime     @default(now())
+}
+
+model Agent {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  title       String
+  photo       String
+  phone       String
+  email       String
+  specialties String   @default("[]") // JSON string[]
+  rating      Float    @default(4.8)
+  bio         String
+  properties  Property[]
+  createdAt   DateTime @default(now())
+}
+
+model Property {
+  id             String       @id @default(cuid())
+  slug           String       @unique
+  title          String
+  description    String
+  type           String // APARTMENT | VILLA | TOWNHOUSE | PENTHOUSE | OFFICE | LAND | COMMERCIAL
+  status         String // FOR_SALE | FOR_RENT | SOLD | NEW_DEVELOPMENT
+  priceKes       Int
+  bedrooms       Int          @default(0)
+  bathrooms      Float        @default(1)
+  sqm            Int
+  address        String
+  neighborhoodId String
+  neighborhood   Neighborhood @relation(fields: [neighborhoodId], references: [id])
+  agentId        String
+  agent          Agent        @relation(fields: [agentId], references: [id])
+  lat            Float
+  lng            Float
+  amenities      String       @default("[]") // JSON string[]
+  images         String       @default("[]") // JSON string[]
+  yearBuilt      Int
+  parking        Int          @default(1)
+  featured       Boolean      @default(false)
+  rating         Float        @default(4.5)
+  views          Int          @default(0)
+  leads          Lead[]
+  createdAt      DateTime     @default(now())
+
+  @@index([status, type])
+  @@index([neighborhoodId])
+  @@index([priceKes])
+}
+
+model Lead {
+  id          String    @id @default(cuid())
+  name        String
+  email       String
+  phone       String
+  message     String    @default("")
+  propertyId  String?
+  property    Property? @relation(fields: [propertyId], references: [id])
+  status      String    @default("NEW") // NEW | CONTACTED | VIEWING | OFFER | CLOSED | LOST
+  source      String    @default("CONTACT_FORM") // CONTACT_FORM | VALUATION | AI_ASSISTANT | VIEWING_REQUEST | NEWSLETTER
+  budgetKes   Int?
+  score       Int       @default(50) // 0-100 lead score
+  assignedTo  String? // agent name
+  notes       String    @default("[]") // JSON {at, author, text}[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+}
+
+model MarketStat {
+  id             String       @id @default(cuid())
+  neighborhoodId String
+  neighborhood   Neighborhood @relation(fields: [neighborhoodId], references: [id])
+  month          String // "2026-01" format
+  medianPriceKes Int
+  pricePerSqm    Int
+  volume         Int
+  yoyChangePct   Float
+
+  @@unique([neighborhoodId, month])
+}
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("NEWSLETTER")
+  createdAt DateTime @default(now())
+}

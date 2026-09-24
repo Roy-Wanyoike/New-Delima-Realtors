@@ -267,6 +267,21 @@ bun run start   # NODE_ENV=production bun .next/standalone/server.js
 
 The server honors the `PORT` environment variable (default 3000).
 
+## Deployment (Vercel + Supabase)
+
+Production deploys from `main` only — see **[DEPLOYMENT.md](./DEPLOYMENT.md)**
+for the full runbook. Highlights:
+
+- `vercel.json` pins `framework: "nextjs"` and builds with the **Postgres**
+  Prisma schema (`prisma/schema.postgres.prisma`) for serverless functions.
+- `DATABASE_URL` (Supabase transaction pooler, port 6543) and
+  `ADMIN_PASSCODE` are set as Vercel environment variables; tables + seed data
+  are provisioned once from a machine via `npm run db:pg:push` +
+  `npm run db:pg:seed` (session pooler, port 5432).
+- All historical feature branches were merged/deleted and
+  *automatically-delete-head-branches* is enabled, so `main` is the only
+  branch that ever deploys.
+
 ## Troubleshooting
 
 - **Port 3000 already in use** — the dev script pins `-p 3000`. Free it with

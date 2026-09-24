@@ -27,7 +27,9 @@ const securityHeaders = (): { key: string; value: string }[] => {
 };
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Standalone output is for self-hosting (sandbox/containers). Vercel builds
+  // and packages Next.js itself, so it must use the default output there.
+  output: process.env.VERCEL ? undefined : "standalone",
   reactStrictMode: false,
   images: {
     remotePatterns: [
