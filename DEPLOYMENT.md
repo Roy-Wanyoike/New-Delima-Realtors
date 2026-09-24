@@ -151,6 +151,21 @@ bun run dev
 4. SQLite database push + seed, then the full Vitest suite
    (`bun run test`)
 
+Two more workflows ship alongside it (issue #63): `e2e.yml` (Playwright
+golden-path specs against a dev server, chromium project) and
+`lighthouse.yml` (weekly scheduled Lighthouse audit of the production build,
+non-blocking).
+
+> **⚠️ Known account-level issue (2026-09):** every Actions run on this repo
+> — including ones from months ago — fails within seconds with **no runner
+> assignment, zero steps and empty logs** (`runner_id: 0`). This happens
+> before any YAML or shell executes, so it is not a code problem: the whole
+> pipeline was verified green in a fresh local clone (install → lint →
+> typecheck → schema → seed → 94/94 tests). Fix it from the GitHub dashboard
+> (the Actions tab or Settings → Billing usually shows the reason — commonly
+> an unpaid balance / spending limit / flagged account). Until then, treat
+> the red X on CI as environmental: Vercel deploys are the authoritative gate.
+
 A green check on `main` is the gate that keeps the Vercel build from ever
 seeing a regression.
 
