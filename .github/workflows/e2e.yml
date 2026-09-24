@@ -34,6 +34,7 @@ jobs:
         env:
           DATABASE_URL: file:/home/z/my-project/db/custom.db
         run: |
+          mkdir -p db
           bunx prisma db push --skip-generate
           bun prisma/seed.ts
 
@@ -41,6 +42,9 @@ jobs:
         run: bunx playwright test --project=chromium
         env:
           RATE_LIMIT_DISABLED: '1'
+          # The dev server spawned by Playwright's webServer reads this —
+          # without it every /api/* call degrades and the specs see no data.
+          DATABASE_URL: file:/home/z/my-project/db/custom.db
 
       - name: Upload traces on failure
         if: failure()
