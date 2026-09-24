@@ -42,6 +42,7 @@ import {
 import { Container, EmptyState, Reveal, StatBlock } from '@/components/delima/ui-kit'
 import { useInsights } from '@/hooks/use-delima-data'
 import { useAppStore } from '@/lib/store'
+import { useI18n } from '@/lib/i18n'
 import { formatKes, formatMonth, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -64,6 +65,7 @@ const axisLine = { stroke: 'var(--line)' }
 function AtlasContent({ onRetry }: { onRetry: () => void }) {
   const { insights, loading, error } = useInsights()
   const setFilterAndGo = useAppStore((s) => s.setFilterAndGo)
+  const { t } = useI18n()
   const [selected, setSelected] = useState<string>('ALL')
 
   const nbs = insights?.neighborhoods ?? []
@@ -138,11 +140,11 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
     return (
       <EmptyState
         icon={LineChart}
-        title="Market data unavailable"
-        description={error ?? 'No neighborhood statistics were returned.'}
+        title={t('insights.errorTitle')}
+        description={error ?? t('insights.errorBody')}
         action={
           <Button onClick={onRetry} className="rounded-full">
-            <RotateCcw className="size-4" aria-hidden="true" /> Try again
+            <RotateCcw className="size-4" aria-hidden="true" /> {t('detail.tryAgain')}
           </Button>
         }
         className="mx-auto max-w-lg"
@@ -159,22 +161,22 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
             <StatBlock
               icon={TrendingUp}
               value={`${kpis.avgYoY >= 0 ? '+' : ''}${kpis.avgYoY.toFixed(1)}%`}
-              label="Avg YoY appreciation — all neighborhoods"
+              label={t('insights.kpiYoY')}
             />
             <StatBlock
               icon={Activity}
               value={kpis.mostActive.name}
-              label={`Most active — ${kpis.mostActive.totalVolume12m} transactions in 12 months`}
+              label={t('insights.kpiActive', { count: kpis.mostActive.totalVolume12m })}
             />
             <StatBlock
               icon={Crown}
               value={kpis.premium.name}
-              label={`Premium address — ${formatKes(kpis.premium.avgPricePerSqm)} / sqm average`}
+              label={t('insights.kpiPremium', { price: formatKes(kpis.premium.avgPricePerSqm) })}
             />
             <StatBlock
               icon={Leaf}
               value={kpis.value.name}
-              label={`Value pick — ${formatKes(kpis.value.avgPricePerSqm)} / sqm average`}
+              label={t('insights.kpiValue', { price: formatKes(kpis.value.avgPricePerSqm) })}
             />
           </div>
         </Reveal>
@@ -185,15 +187,15 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
         <section className="card-modern rounded-2xl p-5">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="eyebrow">Price curve</p>
-              <h3 className="mt-1 text-xl font-bold">KES per sqm — trailing twelve months</h3>
+              <p className="eyebrow">{t('insights.curveEyebrow')}</p>
+              <h3 className="mt-1 text-xl font-bold">{t('insights.curveTitle')}</h3>
             </div>
             <Select value={selected} onValueChange={setSelected}>
-              <SelectTrigger aria-label="Choose neighborhood" className="h-11 w-full rounded-xl sm:w-[240px]">
+              <SelectTrigger aria-label={t('insights.chooseHood')} className="h-11 w-full rounded-xl sm:w-[240px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All neighborhoods (avg)</SelectItem>
+                <SelectItem value="ALL">{t('insights.allHoods')}</SelectItem>
                 {nbs.map((n) => (
                   <SelectItem key={n.slug} value={n.slug}>{n.name}</SelectItem>
                 ))}
@@ -364,20 +366,20 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
         <section className="card-modern rounded-2xl p-5">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
             <div>
-              <p className="eyebrow">Neighborhood heat table</p>
-              <h3 className="mt-1 text-xl font-bold">Latest figures, ranked by KES / sqm</h3>
+              <p className="eyebrow">{t('insights.heatEyebrow')}</p>
+              <h3 className="mt-1 text-xl font-bold">{t('insights.heatTitle')}</h3>
             </div>
-            <p className="text-xs text-muted-foreground">Click a row to browse its listings</p>
+            <p className="text-xs text-muted-foreground">{t('insights.heatHint')}</p>
           </div>
           <div className="overflow-hidden rounded-2xl border border-line bg-white">
             <Table>
               <TableHeader>
                 <TableRow className="bg-brand-soft/50 hover:bg-brand-soft/50">
-                  <TableHead className="uppercase tracking-wider">Neighborhood</TableHead>
-                  <TableHead className="uppercase tracking-wider">Median price</TableHead>
-                  <TableHead className="uppercase tracking-wider">KES / sqm</TableHead>
-                  <TableHead className="uppercase tracking-wider">YoY</TableHead>
-                  <TableHead className="text-right uppercase tracking-wider">12m volume</TableHead>
+                  <TableHead className="uppercase tracking-wider">{t('insights.colHood')}</TableHead>
+                  <TableHead className="uppercase tracking-wider">{t('insights.colMedian')}</TableHead>
+                  <TableHead className="uppercase tracking-wider">{t('insights.colSqm')}</TableHead>
+                  <TableHead className="uppercase tracking-wider">{t('insights.yoy')}</TableHead>
+                  <TableHead className="text-right uppercase tracking-wider">{t('insights.colVolume')}</TableHead>
                   <TableHead className="w-10" aria-hidden="true" />
                 </TableRow>
               </TableHeader>
@@ -427,16 +429,16 @@ function AtlasContent({ onRetry }: { onRetry: () => void }) {
 /* ------------------------------------------------------------------ */
 
 export default function InsightsView() {
+  const { t } = useI18n()
   const [attempt, setAttempt] = useState(0)
   return (
     <Container className="py-10 sm:py-16">
       <Reveal>
         <header className="max-w-2xl">
-          <p className="eyebrow">Market intelligence</p>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">Nairobi Price Atlas</h1>
+          <p className="eyebrow">{t('insights.eyebrow')}</p>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{t('insights.atlasTitle')}</h1>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            Twelve months of data across Delima&apos;s neighborhoods — price curves, traded volume and
-            year-on-year momentum, distilled into one view.
+            {t('insights.atlasSub')}
           </p>
         </header>
       </Reveal>

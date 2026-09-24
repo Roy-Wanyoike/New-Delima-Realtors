@@ -11,9 +11,10 @@ import * as React from 'react'
 import Image from 'next/image'
 import { Bath, BedDouble, Heart, MapPin, Maximize, Star } from 'lucide-react'
 import type { PropertyDTO } from '@/lib/types'
-import { formatPriceForStatus, statusLabel, typeLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/lib/store'
+import { useI18n, usePriceFormatter, useStatusLabel, useTypeLabel } from '@/lib/i18n'
+import { useSavedToggle } from '@/hooks/use-saved'
 
 const statusChip: Record<PropertyDTO['status'], { cls: string; dot: string }> = {
   FOR_SALE: { cls: 'bg-brand text-white', dot: 'bg-emerald-300' },
@@ -35,8 +36,11 @@ export function PropertyCard({
   className?: string
 }) {
   const openProperty = useAppStore(s => s.openProperty)
-  const toggleFavorite = useAppStore(s => s.toggleFavorite)
-  const isFavorite = useAppStore(s => s.isFavorite(property.slug))
+  const { t } = useI18n()
+  const statusLabel = useStatusLabel()
+  const typeLabel = useTypeLabel()
+  const formatPrice = usePriceFormatter()
+  const { saved: isFavorite, toggle: toggleFavorite } = useSavedToggle(property.slug)
   const cover = property.images?.[0]
 
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
@@ -45,7 +49,7 @@ export function PropertyCard({
     <article
       role="link"
       tabIndex={0}
-      aria-label={`${property.title} — ${formatPriceForStatus(property.priceKes, property.status)}`}
+      aria-label={`${property.title} — ${formatPrice(property.priceKes, property.status)}`}
       onClick={() => openProperty(property.slug)}
       onKeyDown={e => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -93,7 +97,7 @@ export function PropertyCard({
             stop(e)
             toggleFavorite(property.slug)
           }}
-          aria-label={isFavorite ? 'Remove from favorites' : 'Save to favorites'}
+          aria-label={isFavorite ? t('common.saved') : t('common.save')}
           aria-pressed={isFavorite}
           className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white/90 text-stone-700 shadow-sm backdrop-blur transition hover:scale-110 hover:text-rose-600"
         >
@@ -103,7 +107,7 @@ export function PropertyCard({
         {/* price on media */}
         <div className="absolute bottom-3 left-3 rounded-xl bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur">
           <span className="text-base sm:text-lg font-extrabold tracking-tight text-brand">
-            {formatPriceForStatus(property.priceKes, property.status)}
+            {formatPrice(property.priceKes, property.status)}
           </span>
         </div>
       </div>
@@ -144,7 +148,7 @@ export function PropertyCard({
             {typeLabel[property.type]}
           </span>
           <span className="inline-flex items-center gap-1 text-sm font-bold text-brand transition-transform group-hover:translate-x-0.5">
-            View details <span aria-hidden>→</span>
+            {t('card.viewDetails')} <span aria-hidden>→</span>
           </span>
         </div>
       </div>

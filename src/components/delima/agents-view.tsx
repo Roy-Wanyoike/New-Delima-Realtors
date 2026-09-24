@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProperties } from '@/hooks/use-delima-data'
 import { useAppStore } from '@/lib/store'
+import { useI18n } from '@/lib/i18n'
 import { formatKes, whatsappLink } from '@/lib/format'
 import type { AgentDTO } from '@/lib/types'
 import { EmptyState, Pill, Reveal, Section, SectionHeading } from './ui-kit'
@@ -76,6 +77,7 @@ function Stars({ rating, name }: { rating: number; name: string }) {
 
 function AgentCard({ agent, index }: { agent: AgentCardData; index: number }) {
   const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
+  const { t } = useI18n()
   const waText = `Hello ${agent.name}, I found you through Delima Realtors and I'd like to talk about ${agent.listingCount > 0 ? 'your current listings' : 'buying a home in Nairobi'}.`
 
   return (
@@ -118,9 +120,9 @@ function AgentCard({ agent, index }: { agent: AgentCardData; index: number }) {
           {/* book stats + listings link */}
           <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-4">
             <p className="text-xs font-semibold text-brand">
-              {agent.listingCount} active {agent.listingCount === 1 ? 'listing' : 'listings'}
+              {t('agents.activeListings', { count: agent.listingCount })}
               <span className="ml-1.5 font-normal text-muted-foreground">
-                · avg {formatKes(agent.avgPrice, { compact: true })}
+                {t('agents.avg', { price: formatKes(agent.avgPrice, { compact: true }) })}
               </span>
             </p>
             <button
@@ -129,7 +131,7 @@ function AgentCard({ agent, index }: { agent: AgentCardData; index: number }) {
               onClick={() => setFilterAndGo({ q: agent.name }, 'properties')}
               aria-label={`View listings by ${agent.name}`}
             >
-              View listings
+              {t('agents.viewListings')}
               <ArrowUpRight className="size-3.5" aria-hidden="true" />
             </button>
           </div>
@@ -191,18 +193,18 @@ function AgentCardSkeleton() {
 const SELL_POINTS = [
   {
     icon: TrendingUp,
-    title: 'Pricing that wins',
-    body: 'Live comparables across nine Nairobi neighbourhoods price your home to sell — not to sit on the market.',
+    titleKey: 'agents.sell1Title',
+    bodyKey: 'agents.sell1Body',
   },
   {
     icon: Camera,
-    title: 'Pro marketing',
-    body: 'Editorial photography, floor plans and portal-first copy that put your listing ahead of the feed.',
+    titleKey: 'agents.sell2Title',
+    bodyKey: 'agents.sell2Body',
   },
   {
     icon: Handshake,
-    title: 'Qualified buyers only',
-    body: 'Every viewing is pre-verified against budget and mortgage readiness, so you only meet serious buyers.',
+    titleKey: 'agents.sell3Title',
+    bodyKey: 'agents.sell3Body',
   },
 ] as const
 
@@ -212,6 +214,7 @@ export default function AgentsView() {
   const { properties, loading, error } = useProperties()
   const agents = useTeamAgents(properties)
   const setView = useAppStore(s => s.setView)
+  const { t } = useI18n()
 
   return (
     <div className="flex flex-col">
@@ -219,12 +222,12 @@ export default function AgentsView() {
       <Section className="pb-16 sm:pb-20">
         <SectionHeading
           align="left"
-          eyebrow="Our people"
-          title="Agents who know Nairobi street by street"
+          eyebrow={t('agents.eyebrow')}
+          title={t('agents.titleFull')}
           description={
             agents.length > 0
-              ? `${agents.length} specialist advisors, one standard: every mandate handled with discretion, pace and deep Nairobi knowledge.`
-              : 'Specialist advisors with one standard: discretion, pace and deep Nairobi knowledge.'
+              ? t('agents.descAll', { count: agents.length })
+              : t('agents.desc')
           }
         />
 
@@ -237,15 +240,15 @@ export default function AgentsView() {
         ) : error ? (
           <EmptyState
             icon={Users}
-            title="The team roster could not be loaded"
+            title={t('agents.errorTitle')}
             description={error}
             className="bg-paper"
           />
         ) : agents.length === 0 ? (
           <EmptyState
             icon={Users}
-            title="Team roster is warming up"
-            description="Our advisors are being connected to the new system. Check back shortly, or reach the desk on WhatsApp."
+            title={t('agents.emptyTitle')}
+            description={t('agents.emptyBody')}
           />
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
@@ -259,20 +262,20 @@ export default function AgentsView() {
       {/* why sell with Delima */}
       <Section tone="soft">
         <SectionHeading
-          eyebrow="Sell with us"
-          title="Why sell with Delima"
-          description="One listing, a full desk behind it — pricing, marketing and a pipeline of buyers we've already vetted."
+          eyebrow={t('agents.sellEyebrow')}
+          title={t('agents.sellTitle')}
+          description={t('agents.sellDesc')}
         />
 
         <div className="grid gap-6 md:grid-cols-3">
-          {SELL_POINTS.map(({ icon: Icon, title, body }, i) => (
-            <Reveal key={title} delay={i * 0.08} className="h-full">
+          {SELL_POINTS.map(({ icon: Icon, titleKey, bodyKey }, i) => (
+            <Reveal key={titleKey} delay={i * 0.08} className="h-full">
               <div className="card-modern h-full p-6">
                 <span className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand">
                   <Icon className="size-6" aria-hidden="true" />
                 </span>
-                <h3 className="mt-4 text-lg font-bold text-ink">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+                <h3 className="mt-4 text-lg font-bold text-ink">{t(titleKey)}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(bodyKey)}</p>
               </div>
             </Reveal>
           ))}
@@ -283,13 +286,13 @@ export default function AgentsView() {
             size="lg"
             className="btn-sun h-12 min-h-11 rounded-full px-8 text-base font-bold"
             onClick={() => setView('valuation')}
-            aria-label="Get a free property valuation"
+            aria-label={t('agents.freeValuation')}
           >
-            Get a free valuation
+            {t('agents.freeValuation')}
             <ArrowUpRight className="size-4" aria-hidden="true" />
           </Button>
           <p className="mt-3 text-sm text-muted-foreground">
-            Free, discreet, 48-hour turnaround — no obligation to list.
+            {t('agents.freeValuationNote')}
           </p>
         </Reveal>
       </Section>

@@ -24,7 +24,8 @@ import {
 } from '@/components/ui/table'
 import { useAppStore } from '@/lib/store'
 import { useProperties } from '@/hooks/use-delima-data'
-import { formatKes, formatPriceForStatus, formatSqm, typeLabel } from '@/lib/format'
+import { useI18n, usePriceFormatter, useTypeLabel } from '@/lib/i18n'
+import { formatKes, formatSqm } from '@/lib/format'
 import type { PropertyDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -36,43 +37,45 @@ interface CompareRow {
   best: 'min' | 'max' | null
 }
 
-const COMPARE_ROWS: CompareRow[] = [
-  {
-    label: 'Price',
-    value: p => formatPriceForStatus(p.priceKes, p.status),
-    score: p => p.priceKes,
-    best: 'min',
-  },
-  { label: 'Type', value: p => typeLabel[p.type], best: null },
-  { label: 'Bedrooms', value: p => `${p.bedrooms} bd`, score: p => p.bedrooms, best: 'max' },
-  { label: 'Bathrooms', value: p => `${p.bathrooms} ba`, score: p => p.bathrooms, best: 'max' },
-  { label: 'Size', value: p => formatSqm(p.sqm), score: p => p.sqm, best: 'max' },
-  { label: 'Neighborhood', value: p => p.neighborhood, best: null },
-  {
-    label: 'Rating',
-    value: p => `${p.rating.toFixed(1)} / 5`,
-    render: p => (
-      <span className="inline-flex items-center justify-center gap-1">
-        <Star className="size-3.5 fill-sun text-sun" aria-hidden="true" />
-        {p.rating.toFixed(1)}
-      </span>
-    ),
-    score: p => p.rating,
-    best: 'max',
-  },
-  {
-    label: 'Parking',
-    value: p => `${p.parking} spaces`,
-    score: p => p.parking,
-    best: 'max',
-  },
-  {
-    label: 'Year Built',
-    value: p => String(p.yearBuilt),
-    score: p => p.yearBuilt,
-    best: 'max',
-  },
-]
+function buildCompareRows(t: (k: Parameters<ReturnType<typeof useI18n>['t']>[0]) => string, typeLabel: Record<PropertyDTO['type'], string>, formatPrice: (p: PropertyDTO) => string): CompareRow[] {
+  return [
+    {
+      label: t('compare.price'),
+      value: p => formatPrice(p),
+      score: p => p.priceKes,
+      best: 'min',
+    },
+    { label: t('compare.type'), value: p => typeLabel[p.type], best: null },
+    { label: t('spec.bedrooms'), value: p => `${p.bedrooms} ${t('common.bedsShort')}`, score: p => p.bedrooms, best: 'max' },
+    { label: t('spec.bathrooms'), value: p => `${p.bathrooms} ${t('common.bathsShort')}`, score: p => p.bathrooms, best: 'max' },
+    { label: t('compare.size'), value: p => formatSqm(p.sqm), score: p => p.sqm, best: 'max' },
+    { label: t('compare.neighborhood'), value: p => p.neighborhood, best: null },
+    {
+      label: t('compare.rating'),
+      value: p => `${p.rating.toFixed(1)} / 5`,
+      render: p => (
+        <span className="inline-flex items-center justify-center gap-1">
+          <Star className="size-3.5 fill-sun text-sun" aria-hidden="true" />
+          {p.rating.toFixed(1)}
+        </span>
+      ),
+      score: p => p.rating,
+      best: 'max',
+    },
+    {
+      label: t('spec.parking'),
+      value: p => `${p.parking}`,
+      score: p => p.parking,
+      best: 'max',
+    },
+    {
+      label: t('compare.year'),
+      value: p => String(p.yearBuilt),
+      score: p => p.yearBuilt,
+      best: 'max',
+    },
+  ]
+}
 
 function bestIndexFor(row: CompareRow, items: PropertyDTO[]): number {
   if (!row.score || row.best === null || items.length < 2) return -1
@@ -113,6 +116,11 @@ export function CompareBar() {
   const clearCompare = useAppStore(s => s.clearCompare)
   const openProperty = useAppStore(s => s.openProperty)
   const { properties } = useProperties()
+  const { t } = useI18n()
+  const typeLabel = useTypeLabel()
+  const formatPriceFor = usePriceFormatter()
+  const formatPrice = (p: PropertyDTO) => formatPriceFor(p.priceKes, p.status)
+  const COMPARE_ROWS = buildCompareRows(t, typeLabel, formatPrice)
   const [dialogOpen, setDialogOpen] = useState(false)
 
   // Resolve slugs → live listings; drop slugs that no longer exist.
@@ -142,17 +150,17 @@ export function CompareBar() {
                 /* Guard: everything the user saved has since been removed */
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-medium text-muted-foreground">
-                    Saved compare homes are no longer available.
+                    {t('compare.empty')}
                   </p>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearCompare}
-                    aria-label="Clear comparison"
+                    aria-label={t('compare.clear')}
                     className="min-h-[44px] rounded-full px-3 text-muted-foreground hover:text-ink"
                   >
                     <X className="size-4" aria-hidden="true" />
-                    Clear
+                    {t('compare.clear')}
                   </Button>
                 </div>
               ) : (
@@ -166,7 +174,7 @@ export function CompareBar() {
                         <Scale className="size-4" />
                       </span>
                       <span className="text-xs font-bold uppercase tracking-[0.18em] text-ink">
-                        Compare
+                        {t('common.compare')}
                       </span>
                       <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-bold text-brand">
                         {items.length}/3
@@ -176,11 +184,11 @@ export function CompareBar() {
                       variant="ghost"
                       size="sm"
                       onClick={clearCompare}
-                      aria-label="Clear comparison"
+                      aria-label={t('compare.clear')}
                       className="min-h-[44px] rounded-full px-3 text-muted-foreground hover:text-ink"
                     >
                       <X className="size-4" aria-hidden="true" />
-                      <span className="hidden sm:inline">Clear</span>
+                      <span className="hidden sm:inline">{t('compare.clear')}</span>
                     </Button>
                   </div>
 
@@ -219,15 +227,13 @@ export function CompareBar() {
                     onClick={() => setDialogOpen(true)}
                     aria-label={
                       items.length < 2
-                        ? 'Select at least two homes to compare'
-                        : 'Open the side-by-side comparison'
+                        ? t('compare.empty')
+                        : t('compare.title')
                     }
                     className="btn-sun mt-2.5 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                   >
                     <Scale className="size-4" aria-hidden="true" />
-                    {items.length < 2
-                      ? `Add ${2 - items.length} more to compare`
-                      : `Compare ${items.length} homes`}
+                    {t('compare.tray', { count: items.length })}
                   </button>
                 </>
               )}
@@ -240,10 +246,10 @@ export function CompareBar() {
         <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl overflow-hidden rounded-2xl p-0">
           <DialogHeader className="border-b border-line px-6 pb-4 pt-6 text-left">
             <DialogTitle className="text-2xl font-extrabold tracking-tight text-ink">
-              Compare Homes
+              {t('compare.title')}
             </DialogTitle>
             <DialogDescription className="text-sm">
-              Side-by-side attributes — the best value in each row is highlighted.
+              {t('compare.bestValue')}
             </DialogDescription>
           </DialogHeader>
 

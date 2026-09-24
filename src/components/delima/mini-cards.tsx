@@ -8,7 +8,8 @@ import { useState } from 'react'
 import { Bath, BedDouble, Image as ImageIcon, MapPin, Ruler, TrendingUp } from 'lucide-react'
 import type { NeighborhoodDTO, PropertyDTO } from '@/lib/types'
 import { useAppStore } from '@/lib/store'
-import { formatKes, formatPriceForStatus, formatSqm, statusLabel } from '@/lib/format'
+import { useI18n, usePriceFormatter, useStatusLabel } from '@/lib/i18n'
+import { formatKes, formatSqm } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 /* ------------------------------------------------------------------ */
@@ -77,6 +78,11 @@ export function PropertyMiniCard({
   className?: string
 }) {
   const openProperty = useAppStore(s => s.openProperty)
+  const { t } = useI18n()
+  const statusLabel = useStatusLabel()
+  const formatPriceFor = usePriceFormatter()
+  const formatPriceForStatus = (price: number, status: PropertyDTO['status']) =>
+    formatPriceFor(price, status)
 
   return (
     <button

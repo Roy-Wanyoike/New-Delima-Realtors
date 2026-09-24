@@ -33,6 +33,7 @@ import {
 import type { PropertyType } from '@/lib/types'
 import { useAppStore } from '@/lib/store'
 import { useInsights, useProperties } from '@/hooks/use-delima-data'
+import { useI18n } from '@/lib/i18n'
 import { formatKes, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -66,18 +67,18 @@ const SUPPORT_PHONE_LABEL = '+254 727 523 752'
 
 const BUDGET_OPTIONS = [5_000_000, 10_000_000, 25_000_000, 50_000_000, 100_000_000] as const
 
-const TYPE_OPTIONS: Array<{ value: PropertyType; label: string }> = [
-  { value: 'TOWNHOUSE', label: 'Houses & townhouses' },
-  { value: 'VILLA', label: 'Villas' },
-  { value: 'APARTMENT', label: 'Apartments' },
-  { value: 'PENTHOUSE', label: 'Penthouses' },
-  { value: 'LAND', label: 'Land' },
+const TYPE_OPTIONS: Array<{ value: PropertyType; labelKey: 'home.typeHouses' | 'type.VILLA' | 'type.APARTMENT' | 'type.PENTHOUSE' | 'type.LAND' }> = [
+  { value: 'TOWNHOUSE', labelKey: 'home.typeHouses' },
+  { value: 'VILLA', labelKey: 'type.VILLA' },
+  { value: 'APARTMENT', labelKey: 'type.APARTMENT' },
+  { value: 'PENTHOUSE', labelKey: 'type.PENTHOUSE' },
+  { value: 'LAND', labelKey: 'type.LAND' },
 ]
 
 const TRUST_CHIPS = [
-  { icon: ShieldCheck, label: 'Title-checked listings' },
-  { icon: BadgeCheck, label: 'Verified owners' },
-  { icon: KeyRound, label: 'End-to-end support' },
+  { icon: ShieldCheck, labelKey: 'home.trustTitles' },
+  { icon: BadgeCheck, labelKey: 'home.trustOwners' },
+  { icon: KeyRound, labelKey: 'home.trustSupport' },
 ] as const
 
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -103,6 +104,7 @@ function SearchTrigger({ icon: Icon, children, label }: { icon: typeof MapPin; c
 function HeroSearchCard() {
   const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
   const { neighborhoods, loading: hoodsLoading } = useInsights()
+  const { t } = useI18n()
 
   const [location, setLocation] = useState('ALL')
   const [type, setType] = useState('ALL')
@@ -127,11 +129,11 @@ function HeroSearchCard() {
           <div className="shimmer h-11 min-h-[44px] rounded-xl" aria-hidden="true" />
         ) : (
           <Select value={location} onValueChange={setLocation}>
-            <SearchTrigger icon={MapPin} label="Location">
+            <SearchTrigger icon={MapPin} label={t('home.searchLocationLabel')}>
               <SelectValue />
             </SearchTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Nairobi</SelectItem>
+              <SelectItem value="ALL">{t('home.anyLocation')}</SelectItem>
               {neighborhoods.map(n => (
                 <SelectItem key={n.slug} value={n.slug}>
                   {n.name}
@@ -142,25 +144,25 @@ function HeroSearchCard() {
         )}
 
         <Select value={type} onValueChange={setType}>
-          <SearchTrigger icon={Building2} label="Property type">
+          <SearchTrigger icon={Building2} label={t('home.searchTypeLabel')}>
             <SelectValue />
           </SearchTrigger>
           <SelectContent>
-            <SelectItem value="ALL">Any type</SelectItem>
-            {TYPE_OPTIONS.map(t => (
-              <SelectItem key={t.value} value={t.value}>
-                {t.label}
+            <SelectItem value="ALL">{t('home.anyType')}</SelectItem>
+            {TYPE_OPTIONS.map(o => (
+              <SelectItem key={o.value} value={o.value}>
+                {t(o.labelKey)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
         <Select value={budget} onValueChange={setBudget}>
-          <SearchTrigger icon={Wallet} label="Maximum budget">
+          <SearchTrigger icon={Wallet} label={t('home.searchBudgetLabel')}>
             <SelectValue />
           </SearchTrigger>
           <SelectContent>
-            <SelectItem value="ALL">Any budget</SelectItem>
+            <SelectItem value="ALL">{t('home.anyBudget')}</SelectItem>
             {BUDGET_OPTIONS.map(v => (
               <SelectItem key={v} value={String(v)}>
                 {formatKes(v, { compact: true })}
@@ -175,7 +177,7 @@ function HeroSearchCard() {
           className="btn-sun inline-flex h-11 min-h-[44px] items-center justify-center gap-2 rounded-xl px-6 text-sm font-bold"
         >
           <Search className="size-4" aria-hidden="true" />
-          Search
+          {t('home.searchButton')}
         </button>
       </div>
     </form>
@@ -183,6 +185,7 @@ function HeroSearchCard() {
 }
 
 function Hero() {
+  const { t } = useI18n()
   return (
     <section className="relative flex min-h-[85vh] items-center">
       <Image
@@ -206,7 +209,7 @@ function Hero() {
             transition={{ duration: 0.55, ease: EASE }}
             className="text-xs font-bold uppercase tracking-[0.28em] text-sun"
           >
-            Nairobi&rsquo;s Trusted Realtors
+            {t('home.eyebrow')}
           </motion.p>
 
           <motion.h1
@@ -215,7 +218,7 @@ function Hero() {
             transition={{ duration: 0.65, delay: 0.08, ease: EASE }}
             className="mt-4 text-4xl font-extrabold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-6xl"
           >
-            Find a home <span className="text-sun">worthy of your next chapter</span>.
+            {t('home.heroTitleA')} <span className="text-sun">{t('home.heroTitleB')}</span>.
           </motion.h1>
 
           <motion.p
@@ -224,9 +227,7 @@ function Hero() {
             transition={{ duration: 0.65, delay: 0.16, ease: EASE }}
             className="mt-5 max-w-xl text-base leading-relaxed text-white/80 sm:text-lg"
           >
-            Title-checked villas, apartments and land across Nairobi&rsquo;s finest neighbourhoods
-            &mdash; with honest pricing, verified owners and a team that carries the process from
-            first viewing to final signature.
+            {t('home.heroSubtitle')}
           </motion.p>
         </div>
 
@@ -243,11 +244,11 @@ function Hero() {
               const Icon = chip.icon
               return (
                 <span
-                  key={chip.label}
+                  key={chip.labelKey}
                   className="inline-flex min-h-[36px] items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white backdrop-blur sm:text-sm"
                 >
                   <Icon className="size-4 shrink-0 text-sun" aria-hidden="true" />
-                  {chip.label}
+                  {t(chip.labelKey)}
                 </span>
               )
             })}
@@ -265,6 +266,7 @@ function Hero() {
 function StatsStrip() {
   const { properties } = useProperties()
   const { neighborhoods } = useInsights()
+  const { t } = useI18n()
 
   const agents = useMemo(
     () => new Set(properties.map(p => p.agent.id)).size,
@@ -282,19 +284,19 @@ function StatsStrip() {
           <StatBlock
             icon={Building2}
             value={properties.length ? formatNumber(properties.length) : '60+'}
-            label="Live listings"
+            label={t('home.statListings')}
           />
           <StatBlock
             icon={MapPin}
             value={neighborhoods.length || 9}
-            label="Neighbourhoods"
+            label={t('home.statNeighborhoods')}
           />
           <StatBlock
             icon={Star}
             value={avgRating ? avgRating.toFixed(1) : '4.9'}
-            label="Average rating"
+            label={t('home.statRating')}
           />
-          <StatBlock icon={Users} value={agents || 6} label="Expert agents" />
+          <StatBlock icon={Users} value={agents || 6} label={t('home.statAgents')} />
         </div>
       </Reveal>
     </Container>
@@ -308,6 +310,7 @@ function StatsStrip() {
 function FeaturedListings() {
   const { properties, loading, error } = useProperties()
   const setView = useAppStore(s => s.setView)
+  const { t } = useI18n()
 
   const featured = useMemo(
     () => properties.filter(p => p.featured && p.status !== 'SOLD').slice(0, 6),
@@ -317,9 +320,9 @@ function FeaturedListings() {
   return (
     <Section tone="paper">
       <SectionHeading
-        eyebrow="Featured"
-        title="Handpicked homes worth discovering"
-        description="A shortlist from our listing desk — each one title-checked, professionally photographed and priced against live market data."
+        eyebrow={t('home.featuredSection')}
+        title={t('home.featuredTitle')}
+        description={t('home.featuredSub')}
       />
 
       {loading ? (
@@ -334,10 +337,10 @@ function FeaturedListings() {
       ) : featured.length === 0 ? (
         <EmptyState
           icon={Home}
-          title={error ? 'We could not load listings' : 'Featured homes are being curated'}
+          title={error ? t('home.featuredErrorTitle') : t('home.featuredEmptyTitle')}
           description={
             error ??
-            'Our listing desk is photographing new residences right now — browse the full collection in the meantime.'
+            t('home.featuredEmptyBody')
           }
           className="bg-white"
           action={
@@ -347,7 +350,7 @@ function FeaturedListings() {
               onClick={() => setView('properties')}
               className="h-11 min-h-[44px] rounded-xl px-7 font-bold"
             >
-              View all properties
+              {t('home.viewAll')}
             </Button>
           }
         />
@@ -367,7 +370,7 @@ function FeaturedListings() {
               onClick={() => setView('properties')}
               className="h-11 min-h-[44px] rounded-xl border-line px-8 font-bold text-brand hover:bg-brand-soft"
             >
-              View all properties
+              {t('home.viewAll')}
               <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
           </Reveal>
@@ -434,6 +437,7 @@ function DealTypeCard({
 
 function BuyRentSplit() {
   const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
+  const { t } = useI18n()
 
   return (
     <Section tone="white">
@@ -442,9 +446,9 @@ function BuyRentSplit() {
           <DealTypeCard
             image={BUY_IMAGE}
             alt="Standalone family home with a manicured lawn"
-            eyebrow="For sale"
-            title="Buy a home"
-            copy="Villas, townhouses and land — every title vetted by our legal desk before it reaches your shortlist."
+            eyebrow={t('home.buyEyebrow')}
+            title={t('home.buyTitle')}
+            copy={t('home.buyCopy')}
             onClick={() => setFilterAndGo({ status: 'FOR_SALE' }, 'properties')}
           />
         </Reveal>
@@ -452,9 +456,9 @@ function BuyRentSplit() {
           <DealTypeCard
             image={RENT_IMAGE}
             alt="Bright modern apartment living room"
-            eyebrow="For rent"
-            title="Rent a home"
-            copy="Furnished and long-let apartments in the city's best-connected neighbourhoods — move-in ready."
+            eyebrow={t('home.rentEyebrow')}
+            title={t('home.rentTitle')}
+            copy={t('home.rentCopy')}
             onClick={() => setFilterAndGo({ status: 'FOR_RENT' }, 'properties')}
           />
         </Reveal>
@@ -468,42 +472,27 @@ function BuyRentSplit() {
 /* ------------------------------------------------------------------ */
 
 const WHY_POINTS = [
-  {
-    icon: ShieldCheck,
-    title: 'Verified, title-checked listings',
-    body: 'Every home on Delima is vetted by our legal desk — clean titles, verified owners and honest photos before it reaches your shortlist.',
-  },
-  {
-    icon: Handshake,
-    title: 'End-to-end, in one place',
-    body: 'Search, viewings, negotiation, lawyers and handover — one dedicated team coordinates the entire journey from first click to final key.',
-  },
-  {
-    icon: LineChart,
-    title: 'Honest market guidance',
-    body: 'We price from real Nairobi transaction data across nine micro-markets, so your offer is grounded in facts — never portal hype.',
-  },
-  {
-    icon: Sparkles,
-    title: 'AI-powered concierge',
-    body: 'Describe your dream home in plain words and get a curated shortlist in seconds — answers day or night, even at 2am.',
-  },
+  { icon: ShieldCheck, titleKey: 'home.why1Title', bodyKey: 'home.why1Body' },
+  { icon: Handshake, titleKey: 'home.why2Title', bodyKey: 'home.why2Body' },
+  { icon: LineChart, titleKey: 'home.why3Title', bodyKey: 'home.why3Body' },
+  { icon: Sparkles, titleKey: 'home.why4Title', bodyKey: 'home.why4Body' },
 ] as const
 
 function WhyDelima() {
+  const { t } = useI18n()
   return (
     <Section tone="white">
       <SectionHeading
-        eyebrow="Why Delima"
-        title="A realtor that does the heavy lifting"
-        description="Four reasons families, investors and businesses across Nairobi start their property journey with us."
+        eyebrow={t('home.whyEyebrow')}
+        title={t('home.whyTitle')}
+        description={t('home.whySub')}
       />
 
       <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {WHY_POINTS.map((point, i) => {
           const Icon = point.icon
           return (
-            <Reveal key={point.title} delay={i * 0.06} className="h-full">
+            <Reveal key={point.titleKey} delay={i * 0.06} className="h-full">
               <div className="card-modern h-full p-6">
                 <span
                   className={cn(
@@ -513,8 +502,8 @@ function WhyDelima() {
                 >
                   <Icon className="size-6" aria-hidden="true" />
                 </span>
-                <h3 className="mt-5 text-lg font-bold leading-snug text-ink">{point.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{point.body}</p>
+                <h3 className="mt-5 text-lg font-bold leading-snug text-ink">{t(point.titleKey)}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(point.bodyKey)}</p>
               </div>
             </Reveal>
           )
@@ -530,6 +519,7 @@ function WhyDelima() {
 
 function AIConciergeBand() {
   const setAssistantOpen = useAppStore(s => s.setAssistantOpen)
+  const { t } = useI18n()
 
   return (
     <Section tone="paper">
@@ -544,12 +534,10 @@ function AIConciergeBand() {
                 <Sparkles className="size-6" aria-hidden="true" />
               </span>
               <h2 className="mt-5 text-2xl font-extrabold tracking-tight text-white sm:text-4xl">
-                Meet Delima AI, your 24/7 property concierge
+                {t('home.aiTitle')}
               </h2>
               <p className="mt-3 text-base leading-relaxed text-white/75">
-                &ldquo;A four-bedroom villa in Karen under KES 60 million, with a pool&rdquo; &mdash;
-                describe what you need in plain words and watch a curated, title-checked shortlist
-                appear in seconds.
+                {t('home.aiCopy')}
               </p>
             </div>
 
@@ -559,7 +547,7 @@ function AIConciergeBand() {
                 onClick={() => setAssistantOpen(true)}
                 className="btn-sun inline-flex h-12 min-h-[48px] items-center gap-2 rounded-xl px-7 text-base font-bold"
               >
-                Ask Delima AI
+                {t('home.aiCta')}
                 <ArrowRight className="size-4" aria-hidden="true" />
               </button>
             </div>
@@ -576,6 +564,7 @@ function AIConciergeBand() {
 
 function ClosingCta() {
   const setView = useAppStore(s => s.setView)
+  const { t } = useI18n()
 
   return (
     <Section tone="white">
@@ -584,11 +573,10 @@ function ClosingCta() {
           <Home className="size-7" aria-hidden="true" />
         </span>
         <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-          Let&rsquo;s help you find a place you&rsquo;ll love to call home.
+          {t('home.closingTitle')}
         </h2>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Talk to a Delima agent today — honest advice, zero pressure, and a shortlist within 24
-          hours.
+          {t('home.closingCopy')}
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button
@@ -597,7 +585,7 @@ function ClosingCta() {
             onClick={() => setView('properties')}
             className="h-12 min-h-[44px] rounded-xl px-8 text-base font-bold"
           >
-            Explore properties
+            {t('home.closingExplore')}
           </Button>
           <Button
             asChild
@@ -607,7 +595,7 @@ function ClosingCta() {
           >
             <a href={`tel:${SUPPORT_PHONE}`}>
               <Phone className="size-4" aria-hidden="true" />
-              Call {SUPPORT_PHONE_LABEL}
+              {t('home.closingCall', { phone: SUPPORT_PHONE_LABEL })}
             </a>
           </Button>
         </div>

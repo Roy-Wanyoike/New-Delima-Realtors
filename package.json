@@ -54,6 +54,8 @@
     "@reactuses/core": "^6.0.5",
     "@tanstack/react-query": "^5.82.0",
     "@tanstack/react-table": "^8.21.3",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -86,6 +88,7 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -93,8 +96,8 @@
     "eslint": "^9",
     "eslint-config-next": "^16.1.1",
     "tailwindcss": "^4",
-    "tw-animate-css": "^1.3.5",
     "tsx": "^4.19.2",
+    "tw-animate-css": "^1.3.5",
     "typescript": "^5",
     "vitest": "^5.0.1"
   },

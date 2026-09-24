@@ -40,15 +40,18 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/lib/store'
+import { useBuyerStore } from '@/lib/buyer-store'
 import { useToast } from '@/hooks/use-toast'
 import { filterProperties, useInsights, useProperties } from '@/hooks/use-delima-data'
+import { useSavedSlugs } from '@/hooks/use-saved'
+import { useI18n, useStatusLabel, useTypeLabel } from '@/lib/i18n'
 import {
   PROPERTY_TYPES,
   type FilterState,
   type PropertyStatus,
   type PropertyType,
 } from '@/lib/types'
-import { formatKes, statusLabel, typeLabel } from '@/lib/format'
+import { formatKes } from '@/lib/format'
 import { Container, EmptyState } from './ui-kit'
 import { PropertyCard, PropertyCardSkeleton } from './property-card'
 
@@ -63,28 +66,10 @@ const RENT_STEPS = [
 ]
 const BED_OPTIONS = [1, 2, 3, 4, 5]
 
-const TYPE_PLURAL: Record<PropertyType, string> = {
-  APARTMENT: 'Apartments',
-  VILLA: 'Villas',
-  TOWNHOUSE: 'Townhouses',
-  PENTHOUSE: 'Penthouses',
-  OFFICE: 'Offices',
-  LAND: 'Land',
-  COMMERCIAL: 'Commercial',
-}
-
-const SORT_OPTIONS: Array<{ value: FilterState['sort']; label: string }> = [
-  { value: 'featured', label: 'Featured' },
-  { value: 'newest', label: 'Newest' },
-  { value: 'price-asc', label: 'Price ↑' },
-  { value: 'price-desc', label: 'Price ↓' },
-  { value: 'size', label: 'Largest' },
-]
-
-const STATUS_TABS: Array<{ value: PropertyStatus | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'All' },
-  { value: 'FOR_SALE', label: 'For Sale' },
-  { value: 'FOR_RENT', label: 'For Rent' },
+const STATUS_TABS: Array<{ value: PropertyStatus | 'ALL'; labelKey: 'props.allTab' | 'common.forSale' | 'common.forRent' }> = [
+  { value: 'ALL', labelKey: 'props.allTab' },
+  { value: 'FOR_SALE', labelKey: 'common.forSale' },
+  { value: 'FOR_RENT', labelKey: 'common.forRent' },
 ]
 
 /* ------------------------------- helpers ------------------------------- */
@@ -97,53 +82,70 @@ function capName(name: string): string {
   return name.length > 28 ? `${name.slice(0, 27)}…` : name
 }
 
+/** Labels bundle passed into the composed-heading helpers (locale-aware). */
+interface SearchLabels {
+  typePlural: Record<PropertyType, string>
+  homes: string
+  forRent: string
+  forSale: string
+  rentals: string
+  homesForSale: string
+  homesIn: (name: string) => string
+  inHood: (name: string) => string
+  under: (amount: string) => string
+  over: (amount: string) => string
+  bedsPlus: (n: number) => string
+  featured: string
+  allResidences: string
+  resultsFor: (q: string) => string
+  newDevelopments: string
+}
+
 /** Human name for the current filters, e.g. "Villas in Karen" / "Under KES 25M". Capped ~28 chars. */
-export function describeSearchName(f: FilterState, hoodNames: Map<string, string>): string {
+export function describeSearchName(f: FilterState, hoodNames: Map<string, string>, L: SearchLabels): string {
   if (f.q.trim()) {
     const q = f.q.trim()
     return capName(q.charAt(0).toUpperCase() + q.slice(1))
   }
   const bits: string[] = []
   const hood = f.neighborhood !== 'ALL' ? hoodNames.get(f.neighborhood) ?? f.neighborhood : null
-  let head = f.type !== 'ALL' ? TYPE_PLURAL[f.type] : hood ? 'Homes' : ''
-  if (f.status === 'FOR_RENT') head = head ? `${head} for rent` : 'Rentals'
-  if (f.status === 'FOR_SALE') head = head ? `${head} for sale` : 'Homes for sale'
-  if (head && hood) bits.push(`${head} in ${hood}`)
+  let head = f.type !== 'ALL' ? L.typePlural[f.type] : hood ? L.homes : ''
+  if (f.status === 'FOR_RENT') head = head ? `${head} ${L.forRent}` : L.rentals
+  if (f.status === 'FOR_SALE') head = head ? `${head} ${L.forSale}` : L.homesForSale
+  if (head && hood) bits.push(`${head} ${L.inHood(hood)}`)
   else if (head) bits.push(head)
-  else if (hood) bits.push(`Homes in ${hood}`)
+  else if (hood) bits.push(L.homesIn(hood))
   if (f.minPrice != null && f.maxPrice != null) {
     bits.push(`KES ${compactKes(f.minPrice)}–${compactKes(f.maxPrice)}`)
   } else if (f.maxPrice != null) {
-    bits.push(`Under KES ${compactKes(f.maxPrice)}`)
+    bits.push(L.under(compactKes(f.maxPrice)))
   } else if (f.minPrice != null) {
-    bits.push(`Over KES ${compactKes(f.minPrice)}`)
+    bits.push(L.over(compactKes(f.minPrice)))
   }
-  if (f.beds > 0) bits.push(`${f.beds}+ beds`)
-  if (f.featuredOnly) bits.push('Featured')
-  if (bits.length === 0) return 'All residences'
+  if (f.beds > 0) bits.push(L.bedsPlus(f.beds))
+  if (f.featuredOnly) bits.push(L.featured)
+  if (bits.length === 0) return L.allResidences
   return capName(bits.join(' · '))
 }
 
 /** Dynamic page heading, e.g. "Villas for sale in Karen" / "Results for “bungalow”". */
-function describeHeading(f: FilterState, hoodNames: Map<string, string>): string {
+function describeHeading(f: FilterState, hoodNames: Map<string, string>, L: SearchLabels): string {
   const q = f.q.trim()
   if (q) {
     const short = q.length > 26 ? `${q.slice(0, 25)}…` : q
-    return `Results for “${short}”`
+    return L.resultsFor(short)
   }
   const hood = f.neighborhood !== 'ALL' ? hoodNames.get(f.neighborhood) ?? f.neighborhood : null
-  let head = f.type !== 'ALL' ? TYPE_PLURAL[f.type] : f.status === 'NEW_DEVELOPMENT' ? 'New developments' : 'Homes'
-  if (f.status === 'FOR_SALE') head = `${head} for sale`
-  if (f.status === 'FOR_RENT') head = `${head} for rent`
-  if (hood) head = `${head} in ${hood}`
-  if (f.featuredOnly) head = `Featured ${head.charAt(0).toLowerCase()}${head.slice(1)}`
+  let head = f.type !== 'ALL' ? L.typePlural[f.type] : f.status === 'NEW_DEVELOPMENT' ? L.newDevelopments : L.homes
+  if (f.status === 'FOR_SALE') head = `${head} ${L.forSale}`
+  if (f.status === 'FOR_RENT') head = `${head} ${L.forRent}`
+  if (hood) head = `${head} ${L.inHood(hood)}`
+  if (f.featuredOnly) head = `${L.featured} ${head.charAt(0).toLowerCase()}${head.slice(1)}`
   return head
 }
 
-function rentHint(status: PropertyStatus | 'ALL'): string {
-  return status === 'FOR_RENT'
-    ? 'Prices are shown per month for rentals.'
-    : 'Filter by type, area, price, bedrooms and more.'
+function rentHint(status: PropertyStatus | 'ALL', t: (k: 'props.pricePerMonth' | 'props.filters') => string): string {
+  return status === 'FOR_RENT' ? t('props.pricePerMonth') : t('props.filters')
 }
 
 /* ------------------------------ search box ----------------------------- */
@@ -152,6 +154,7 @@ function rentHint(status: PropertyStatus | 'ALL'): string {
 function SearchBox({ idPrefix }: { idPrefix: string }) {
   const q = useAppStore(s => s.filters.q)
   const setFilters = useAppStore(s => s.setFilters)
+  const { t } = useI18n()
   const [value, setValue] = useState(q)
   const [prevQ, setPrevQ] = useState(q)
 
@@ -176,15 +179,15 @@ function SearchBox({ idPrefix }: { idPrefix: string }) {
         type="search"
         value={value}
         onChange={e => setValue(e.target.value)}
-        placeholder="Search area, amenity, keyword…"
-        aria-label="Search homes"
+        placeholder={t('props.searchPlaceholderShort')}
+        aria-label={t('props.searchHomes')}
         className="h-11 rounded-xl bg-background pl-10 pr-10"
       />
       {value && (
         <button
           type="button"
           onClick={() => setValue('')}
-          aria-label="Clear search"
+          aria-label={t('props.clearSearch')}
           className="absolute right-1.5 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-ink"
         >
           <X className="size-4" aria-hidden />
@@ -206,6 +209,8 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
   const filters = useAppStore(s => s.filters)
   const setFilters = useAppStore(s => s.setFilters)
   const resetFilters = useAppStore(s => s.resetFilters)
+  const { t } = useI18n()
+  const typeLabel = useTypeLabel()
 
   const rentMode = filters.status === 'FOR_RENT'
   const steps = rentMode ? RENT_STEPS : SALE_STEPS
@@ -218,7 +223,7 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
 
       {/* status pills */}
       <div>
-        <p className={groupLabel} id={`${idPrefix}-status-label`}>Status</p>
+        <p className={groupLabel} id={`${idPrefix}-status-label`}>{t('props.status')}</p>
         <div role="group" aria-labelledby={`${idPrefix}-status-label`} className="mt-2 grid grid-cols-3 gap-2">
           {STATUS_TABS.map(tab => {
             const active = filters.status === tab.value
@@ -241,7 +246,7 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
                     : 'border-line bg-white text-ink hover:border-brand/40 hover:bg-brand-soft/50',
                 )}
               >
-                {tab.label}
+                {t(tab.labelKey)}
               </button>
             )
           })}
@@ -250,17 +255,17 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
 
       {/* type */}
       <div>
-        <p className={groupLabel}>Property type</p>
+        <p className={groupLabel}>{t('props.type')}</p>
         <div className="mt-2">
-          <Label className="sr-only" htmlFor={`${idPrefix}-type`}>Property type</Label>
+          <Label className="sr-only" htmlFor={`${idPrefix}-type`}>{t('props.type')}</Label>
           <Select value={filters.type} onValueChange={v => setFilters({ type: v as PropertyType | 'ALL' })}>
-            <SelectTrigger id={`${idPrefix}-type`} aria-label="Property type" className="h-11 w-full rounded-xl bg-background justify-between">
-              <SelectValue placeholder="Any type" />
+            <SelectTrigger id={`${idPrefix}-type`} aria-label={t('props.type')} className="h-11 w-full rounded-xl bg-background justify-between">
+              <SelectValue placeholder={t('props.anyType')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">Any type</SelectItem>
-              {PROPERTY_TYPES.map(t => (
-                <SelectItem key={t} value={t}>{typeLabel[t]}</SelectItem>
+              <SelectItem value="ALL">{t('props.anyType')}</SelectItem>
+              {PROPERTY_TYPES.map(ty => (
+                <SelectItem key={ty} value={ty}>{typeLabel[ty]}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -269,7 +274,7 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
 
       {/* bedrooms pills */}
       <div>
-        <p className={groupLabel} id={`${idPrefix}-beds-label`}>Bedrooms</p>
+        <p className={groupLabel} id={`${idPrefix}-beds-label`}>{t('props.beds')}</p>
         <div role="group" aria-labelledby={`${idPrefix}-beds-label`} className="mt-2 grid grid-cols-3 gap-2">
           <button
             type="button"
@@ -282,7 +287,7 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
                 : 'border-line bg-white text-ink hover:border-brand/40 hover:bg-brand-soft/50',
             )}
           >
-            Any
+            {t('props.anyBeds')}
           </button>
           {BED_OPTIONS.map(n => {
             const active = filters.beds === n
@@ -291,7 +296,7 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
                 key={n}
                 type="button"
                 aria-pressed={active}
-                aria-label={n === 5 ? 'Five or more bedrooms' : `${n} or more bedrooms`}
+                aria-label={t('props.bedsPlus', { count: n })}
                 onClick={() => setFilters({ beds: n })}
                 className={cn(
                   'h-11 rounded-xl border text-[13px] font-semibold transition-colors',
@@ -300,7 +305,7 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
                     : 'border-line bg-white text-ink hover:border-brand/40 hover:bg-brand-soft/50',
                 )}
               >
-                {n === 5 ? '5+' : `${n}+`}
+                {t('props.bedsPlus', { count: n })}
               </button>
             )
           })}
@@ -309,41 +314,41 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
 
       {/* price ladder */}
       <div>
-        <p className={groupLabel}>Price {rentMode ? 'per month' : '(KES)'}</p>
+        <p className={groupLabel}>{rentMode ? t('props.pricePerMonth') : t('props.priceKes')}</p>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <div>
-            <Label className="sr-only" htmlFor={`${idPrefix}-min`}>Minimum price</Label>
+            <Label className="sr-only" htmlFor={`${idPrefix}-min`}>{t('props.minPrice')}</Label>
             <Select
               value={filters.minPrice == null ? 'ANY' : String(filters.minPrice)}
               onValueChange={v => setFilters({ minPrice: v === 'ANY' ? null : Number(v) })}
             >
-              <SelectTrigger id={`${idPrefix}-min`} aria-label="Minimum price" className="h-11 w-full rounded-xl bg-background justify-between">
-                <SelectValue placeholder="No min" />
+              <SelectTrigger id={`${idPrefix}-min`} aria-label={t('props.minPrice')} className="h-11 w-full rounded-xl bg-background justify-between">
+                <SelectValue placeholder={t('props.noMin')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ANY">No min</SelectItem>
+                <SelectItem value="ANY">{t('props.noMin')}</SelectItem>
                 {steps.map(step => (
                   <SelectItem key={step} value={String(step)}>
-                    KES {compactKes(step)}{rentMode ? '/mo' : ''}
+                    KES {compactKes(step)}{rentMode ? t('props.perMo') : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label className="sr-only" htmlFor={`${idPrefix}-max`}>Maximum price</Label>
+            <Label className="sr-only" htmlFor={`${idPrefix}-max`}>{t('props.maxPrice')}</Label>
             <Select
               value={filters.maxPrice == null ? 'ANY' : String(filters.maxPrice)}
               onValueChange={v => setFilters({ maxPrice: v === 'ANY' ? null : Number(v) })}
             >
-              <SelectTrigger id={`${idPrefix}-max`} aria-label="Maximum price" className="h-11 w-full rounded-xl bg-background justify-between">
-                <SelectValue placeholder="No max" />
+              <SelectTrigger id={`${idPrefix}-max`} aria-label={t('props.maxPrice')} className="h-11 w-full rounded-xl bg-background justify-between">
+                <SelectValue placeholder={t('props.noMax')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ANY">No max</SelectItem>
+                <SelectItem value="ANY">{t('props.noMax')}</SelectItem>
                 {steps.map(step => (
                   <SelectItem key={step} value={String(step)}>
-                    KES {compactKes(step)}{rentMode ? '/mo' : ''}
+                    KES {compactKes(step)}{rentMode ? t('props.perMo') : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -354,15 +359,15 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
 
       {/* neighborhood */}
       <div>
-        <p className={groupLabel}>Neighborhood</p>
+        <p className={groupLabel}>{t('props.neighborhood')}</p>
         <div className="mt-2">
-          <Label className="sr-only" htmlFor={`${idPrefix}-hood`}>Neighborhood</Label>
+          <Label className="sr-only" htmlFor={`${idPrefix}-hood`}>{t('props.neighborhood')}</Label>
           <Select value={filters.neighborhood} onValueChange={v => setFilters({ neighborhood: v })}>
-            <SelectTrigger id={`${idPrefix}-hood`} aria-label="Neighborhood" className="h-11 w-full rounded-xl bg-background justify-between">
-              <SelectValue placeholder="All neighborhoods" />
+            <SelectTrigger id={`${idPrefix}-hood`} aria-label={t('props.neighborhood')} className="h-11 w-full rounded-xl bg-background justify-between">
+              <SelectValue placeholder={t('props.allNeighborhoods')} />
             </SelectTrigger>
             <SelectContent className="delima-scroll max-h-72">
-              <SelectItem value="ALL">All neighborhoods</SelectItem>
+              <SelectItem value="ALL">{t('props.allNeighborhoods')}</SelectItem>
               {hoods.map(h => (
                 <SelectItem key={h.slug} value={h.slug}>{h.name}</SelectItem>
               ))}
@@ -374,11 +379,11 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
       {/* featured */}
       <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-background px-3.5 py-2">
         <Label htmlFor={`${idPrefix}-featured`} className="text-sm font-medium">
-          Featured only
+          {t('props.featuredOnly')}
         </Label>
         <Switch
           id={`${idPrefix}-featured`}
-          aria-label="Featured listings only"
+          aria-label={t('props.featuredOnly')}
           checked={filters.featuredOnly}
           onCheckedChange={v => setFilters({ featuredOnly: v })}
         />
@@ -390,7 +395,7 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
         className="h-11 justify-start gap-2 rounded-xl px-2 text-muted-foreground hover:text-brand"
       >
         <RotateCcw className="size-4" aria-hidden />
-        Reset filters
+        {t('props.resetFilters')}
       </Button>
     </div>
   )
@@ -399,22 +404,60 @@ function FilterPanel({ hoods, idPrefix }: { hoods: HoodOption[]; idPrefix: strin
 /* ------------------------------- page ---------------------------------- */
 
 export default function PropertiesView() {
+  const { t } = useI18n()
+  const statusLabel = useStatusLabel()
   const filters = useAppStore(s => s.filters)
   const setFilters = useAppStore(s => s.setFilters)
   const resetFilters = useAppStore(s => s.resetFilters)
   const setView = useAppStore(s => s.setView)
-  const favorites = useAppStore(s => s.favorites)
-  const savedSearches = useAppStore(s => s.savedSearches)
-  const addSavedSearch = useAppStore(s => s.addSavedSearch)
-  const removeSavedSearch = useAppStore(s => s.removeSavedSearch)
-  const applySavedSearch = useAppStore(s => s.applySavedSearch)
+  const localSearches = useAppStore(s => s.savedSearches)
+  const addLocalSearch = useAppStore(s => s.addSavedSearch)
+  const removeLocalSearch = useAppStore(s => s.removeSavedSearch)
+  const applyLocalSearch = useAppStore(s => s.applySavedSearch)
+  const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
   const hoveredSlug = useAppStore(s => s.hoveredSlug)
   const setHoveredSlug = useAppStore(s => s.setHoveredSlug)
+  const buyerStatus = useBuyerStore(s => s.status)
+  const buyerSearches = useBuyerStore(s => s.searches)
+  const addServerSearch = useBuyerStore(s => s.addSavedSearch)
+  const removeServerSearch = useBuyerStore(s => s.removeSavedSearch)
+  const authed = buyerStatus === 'authed'
+  const { slugs: savedSlugs, loading: savedLoading } = useSavedSlugs()
   const { properties, loading, error } = useProperties()
   const { neighborhoods } = useInsights()
   const { toast } = useToast()
   const [showFavorites, setShowFavorites] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+
+  // locale-aware label bundle for composed headings/search names
+  const labels = useMemo<SearchLabels>(
+    () => ({
+      typePlural: {
+        APARTMENT: t('plural.APARTMENT'),
+        VILLA: t('plural.VILLA'),
+        TOWNHOUSE: t('plural.TOWNHOUSE'),
+        PENTHOUSE: t('plural.PENTHOUSE'),
+        OFFICE: t('plural.OFFICE'),
+        LAND: t('plural.LAND'),
+        COMMERCIAL: t('plural.COMMERCIAL'),
+      },
+      homes: t('props.homes'),
+      forRent: t('props.forRentSuffix'),
+      forSale: t('props.forSaleSuffix'),
+      rentals: t('props.rentals'),
+      homesForSale: t('props.homesForSale'),
+      homesIn: name => t('props.homesIn', { name }),
+      inHood: name => t('props.inHood', { name }),
+      under: amount => t('props.under', { amount }),
+      over: amount => t('props.over', { amount }),
+      bedsPlus: n => t('props.bedsPlusN', { count: n }),
+      featured: t('common.featured'),
+      allResidences: t('props.allResidences'),
+      resultsFor: q => t('props.resultsFor', { q }),
+      newDevelopments: t('props.newDevelopments'),
+    }),
+    [t],
+  )
 
   // Neighborhood options: insights first, fall back to whatever the listings carry
   const hoods = useMemo<HoodOption[]>(() => {
@@ -432,18 +475,42 @@ export default function PropertiesView() {
     return map
   }, [hoods])
 
-  const saveCurrentSearch = () => {
-    const ok = addSavedSearch(describeSearchName(filters, hoodNames))
-    if (!ok) {
-      toast({ title: 'Manage saved searches — limit is 6', variant: 'destructive' })
+  const saveCurrentSearch = async () => {
+    const name = describeSearchName(filters, hoodNames, labels)
+    if (authed) {
+      const result = await addServerSearch(name, filters)
+      if (!result.ok) {
+        toast({ title: result.error ?? t('props.searchLimit'), variant: 'destructive' })
+        return
+      }
+    } else {
+      const ok = addLocalSearch(name)
+      if (!ok) {
+        toast({ title: t('props.searchLimit'), variant: 'destructive' })
+        return
+      }
+    }
+    toast({ title: t('props.searchSaved') })
+  }
+
+  const savedSearches = authed ? buyerSearches : localSearches
+  const removeSavedSearch = (id: string) => {
+    if (authed) void removeServerSearch(id)
+    else removeLocalSearch(id)
+    toast({ title: t('props.searchRemoved') })
+  }
+  const applySavedSearch = (id: string) => {
+    if (authed) {
+      const s = buyerSearches.find(x => x.id === id)
+      if (s) setFilterAndGo(s.filters, 'properties')
       return
     }
-    toast({ title: 'Search saved', description: 'Run it any time from the saved searches strip.' })
+    applyLocalSearch(id)
   }
 
   const baseList = useMemo(
-    () => (showFavorites ? properties.filter(p => favorites.includes(p.slug)) : properties),
-    [properties, favorites, showFavorites],
+    () => (showFavorites ? properties.filter(p => savedSlugs.includes(p.slug)) : properties),
+    [properties, savedSlugs, showFavorites],
   )
   const results = useMemo(() => filterProperties(baseList, filters), [baseList, filters])
 
@@ -480,7 +547,7 @@ export default function PropertiesView() {
       })
     }
     if (filters.type !== 'ALL') {
-      list.push({ key: 'type', label: TYPE_PLURAL[filters.type], clear: () => setFilters({ type: 'ALL' }) })
+      list.push({ key: 'type', label: labels.typePlural[filters.type], clear: () => setFilters({ type: 'ALL' }) })
     }
     if (filters.neighborhood !== 'ALL') {
       list.push({
@@ -490,41 +557,53 @@ export default function PropertiesView() {
       })
     }
     if (filters.beds > 0) {
-      list.push({ key: 'beds', label: `${filters.beds}+ bd`, clear: () => setFilters({ beds: 0 }) })
+      list.push({ key: 'beds', label: t('props.bedsPlusN', { count: filters.beds }), clear: () => setFilters({ beds: 0 }) })
     }
     if (filters.minPrice != null) {
-      list.push({ key: 'min', label: `From KES ${compactKes(filters.minPrice)}`, clear: () => setFilters({ minPrice: null }) })
+      list.push({ key: 'min', label: `KES ${compactKes(filters.minPrice)}+`, clear: () => setFilters({ minPrice: null }) })
     }
     if (filters.maxPrice != null) {
-      list.push({ key: 'max', label: `Up to KES ${compactKes(filters.maxPrice)}`, clear: () => setFilters({ maxPrice: null }) })
+      list.push({ key: 'max', label: t('props.under', { amount: compactKes(filters.maxPrice) }), clear: () => setFilters({ maxPrice: null }) })
     }
     if (filters.featuredOnly) {
-      list.push({ key: 'featured', label: 'Featured only', clear: () => setFilters({ featuredOnly: false }) })
+      list.push({ key: 'featured', label: t('props.featuredOnly'), clear: () => setFilters({ featuredOnly: false }) })
     }
     if (showFavorites) {
-      list.push({ key: 'saved', label: `♥ Saved (${favorites.length})`, clear: () => setShowFavorites(false) })
+      list.push({ key: 'saved', label: t('props.savedChip', { count: savedSlugs.length }), clear: () => setShowFavorites(false) })
     }
     return list
-  }, [filters, favorites.length, hoodNames, setFilters, showFavorites])
+  }, [filters, labels, hoodNames, savedSlugs.length, setFilters, showFavorites, statusLabel, t])
 
   const countLine = loading
-    ? 'Loading homes…'
-    : `${results.length} ${results.length === 1 ? 'home matches' : 'homes match'} your search${showFavorites ? ' · from your saved list' : ''}`
+    ? t('common.loading')
+    : showFavorites
+      ? `${results.length === 1 ? t('props.resultsOne') : t('props.resultsCount', { count: results.length })} · ${t('props.showingFavorites')}`
+      : results.length === 1
+        ? t('props.resultsOne')
+        : t('props.resultsCount', { count: results.length })
 
-  const emptyTitle = showFavorites && favorites.length === 0 ? 'No saved homes yet' : 'No homes match your search'
-  const emptyBody = showFavorites && favorites.length === 0
-    ? 'Tap the heart on any listing to keep it here for later.'
-    : 'Every great home deserves a second look — try loosening a filter or two.'
+  const emptyTitle = showFavorites && savedSlugs.length === 0 && !savedLoading ? t('props.emptyFavTitle') : t('props.emptyTitle')
+  const emptyBody = showFavorites && savedSlugs.length === 0 && !savedLoading
+    ? t('props.emptyFavBody')
+    : t('props.emptyBody')
+
+  const SORT_OPTIONS: Array<{ value: FilterState['sort']; label: string }> = [
+    { value: 'featured', label: t('props.sortFeatured') },
+    { value: 'newest', label: t('props.sortNewest') },
+    { value: 'price-asc', label: t('props.sortPriceUp') },
+    { value: 'price-desc', label: t('props.sortPriceDown') },
+    { value: 'size', label: t('props.sortLargest') },
+  ]
 
   return (
     <Container>
       {/* ---------------- header ---------------- */}
       <section className="pb-2 pt-8 md:pt-12" aria-labelledby="properties-heading">
-        <p className="eyebrow">Browse the collection</p>
+        <p className="eyebrow">{t('props.title')}</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
           <div className="min-w-0">
             <h1 id="properties-heading" className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-              {describeHeading(filters, hoodNames)}
+              {describeHeading(filters, hoodNames, labels)}
             </h1>
             <p className="mt-2 text-sm font-medium text-muted-foreground" aria-live="polite">
               {countLine}
@@ -538,11 +617,11 @@ export default function PropertiesView() {
               <SheetTrigger asChild>
                 <Button
                   variant="outline"
-                  aria-label={`Open filters, ${activeFilterCount} active`}
+                  aria-label={t('props.filtersAria', { count: activeFilterCount })}
                   className="relative h-11 shrink-0 gap-2 rounded-xl lg:hidden"
                 >
                   <SlidersHorizontal className="size-4" aria-hidden />
-                  Filters
+                  {t('props.filters')}
                   {activeFilterCount > 0 && (
                     <span
                       aria-hidden
@@ -555,8 +634,8 @@ export default function PropertiesView() {
               </SheetTrigger>
               <SheetContent side="left" className="delima-scroll w-[min(21rem,92vw)] overflow-y-auto">
                 <SheetHeader className="text-left">
-                  <SheetTitle className="text-xl font-extrabold tracking-tight">Refine search</SheetTitle>
-                  <SheetDescription>{rentHint(filters.status)}</SheetDescription>
+                  <SheetTitle className="text-xl font-extrabold tracking-tight">{t('props.refine')}</SheetTitle>
+                  <SheetDescription>{rentHint(filters.status, t)}</SheetDescription>
                 </SheetHeader>
                 <div className="mt-2 pb-4">
                   <FilterPanel hoods={hoods} idPrefix="sheet" />
@@ -566,7 +645,7 @@ export default function PropertiesView() {
                     onClick={() => setSheetOpen(false)}
                     className="btn-sun h-11 w-full rounded-full text-sm font-bold"
                   >
-                    Show {results.length} {results.length === 1 ? 'home' : 'homes'}
+                    {t('props.showResults', { count: results.length })}
                   </Button>
                 </div>
               </SheetContent>
@@ -583,16 +662,16 @@ export default function PropertiesView() {
               )}
             >
               <Heart className={cn('size-4', showFavorites && 'fill-current')} aria-hidden />
-              <span className="hidden sm:inline">{favorites.length} saved</span>
-              <span className="sm:hidden">{favorites.length}</span>
+              <span className="hidden sm:inline">{t('props.savedCount', { count: savedSlugs.length })}</span>
+              <span className="sm:hidden">{savedSlugs.length}</span>
             </Button>
 
             {/* sort */}
             <div>
-              <Label className="sr-only" htmlFor="delima-sort">Sort results</Label>
+              <Label className="sr-only" htmlFor="delima-sort">{t('props.sortLabel')}</Label>
               <Select value={filters.sort} onValueChange={v => setFilters({ sort: v as typeof filters.sort })}>
-                <SelectTrigger id="delima-sort" aria-label="Sort results" className="h-11 w-[9.5rem] rounded-xl bg-background justify-between sm:w-[10.5rem]">
-                  <SelectValue placeholder="Sort" />
+                <SelectTrigger id="delima-sort" aria-label={t('props.sortLabel')} className="h-11 w-[9.5rem] rounded-xl bg-background justify-between sm:w-[10.5rem]">
+                  <SelectValue placeholder={t('props.sortPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {SORT_OPTIONS.map(o => (
@@ -607,22 +686,22 @@ export default function PropertiesView() {
               variant="outline"
               onClick={() => setView('map')}
               className="h-11 shrink-0 gap-2 rounded-xl"
-              aria-label="Open map view"
+              aria-label={t('props.mapView')}
             >
               <MapIcon className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Map view</span>
-              <span className="sm:hidden">Map</span>
+              <span className="hidden sm:inline">{t('props.mapView')}</span>
+              <span className="sm:hidden">{t('props.mapShort')}</span>
             </Button>
 
             {/* save search */}
             <Button
-              onClick={saveCurrentSearch}
+              onClick={() => void saveCurrentSearch()}
               className="h-11 shrink-0 gap-2 rounded-xl px-4"
-              aria-label="Save current search"
+              aria-label={t('props.saveThisSearch')}
             >
               <BookmarkPlus className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Save search</span>
-              <span className="sm:hidden">Save</span>
+              <span className="hidden sm:inline">{t('props.saveThisSearch')}</span>
+              <span className="sm:hidden">{t('common.save')}</span>
             </Button>
           </div>
         </div>
@@ -652,7 +731,7 @@ export default function PropertiesView() {
             onClick={clearAll}
             className="ml-1 h-11 rounded-full px-3 text-[13px] font-bold text-brand underline-offset-4 transition-colors hover:bg-brand-soft hover:underline"
           >
-            Clear all
+            {t('props.clearAll')}
           </button>
         </div>
       )}
@@ -660,7 +739,7 @@ export default function PropertiesView() {
       {/* ---------------- saved searches strip ---------------- */}
       {savedSearches.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Saved searches">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saved searches</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('props.savedSearches')}</span>
           {savedSearches.map(s => (
             <span key={s.id} className="inline-flex h-11 items-center rounded-full border border-line bg-brand-soft/60 pl-2.5 text-[13px] font-semibold text-brand">
               <button
@@ -691,8 +770,8 @@ export default function PropertiesView() {
         <aside className="hidden lg:block" aria-label="Search filters">
           <div className="card-modern sticky top-24 p-5">
             <div className="delima-scroll max-h-[calc(100vh-9rem)] overflow-y-auto pr-1">
-              <h2 className="text-lg font-extrabold tracking-tight text-ink">Refine search</h2>
-              <p className="mt-0.5 mb-5 text-xs text-muted-foreground">{rentHint(filters.status)}</p>
+              <h2 className="text-lg font-extrabold tracking-tight text-ink">{t('props.refine')}</h2>
+              <p className="mt-0.5 mb-5 text-xs text-muted-foreground">{rentHint(filters.status, t)}</p>
               <FilterPanel hoods={hoods} idPrefix="rail" />
             </div>
           </div>
@@ -703,13 +782,13 @@ export default function PropertiesView() {
           {error ? (
             <EmptyState
               icon={TriangleAlert}
-              title="Something went adrift"
+              title={t('props.errorTitle')}
               description={error}
               className="min-h-72"
               action={
                 <Button onClick={() => window.location.reload()} variant="outline" className="h-11 gap-2 rounded-xl">
                   <RotateCcw className="size-4" aria-hidden />
-                  Try again
+                  {t('detail.tryAgain')}
                 </Button>
               }
             />
@@ -734,7 +813,7 @@ export default function PropertiesView() {
                   className="btn-sun h-11 gap-2 rounded-full px-6 text-sm font-bold"
                 >
                   <RotateCcw className="size-4" aria-hidden />
-                  Reset the search
+                  {t('props.resetSearch')}
                 </Button>
               }
             />

@@ -52,6 +52,28 @@ export async function getPropertyBySlug(slug: string): Promise<PropertyDTO | nul
   return row ? toPropertyDTO(row as never) : null
 }
 
+/** Full PropertyDTO list a buyer has saved (newest first) — issue #59. */
+export async function getSavedProperties(buyerId: string): Promise<PropertyDTO[]> {
+  const rows = await db.savedProperty.findMany({
+    where: { buyerId },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      property: { include: { neighborhood: true, agent: true } },
+    },
+  })
+  return rows.map(r => toPropertyDTO(r.property as never))
+}
+
+/** Slugs only — lightweight payload for heart-state sync on listing grids. */
+export async function getSavedSlugs(buyerId: string): Promise<string[]> {
+  const rows = await db.savedProperty.findMany({
+    where: { buyerId },
+    orderBy: { createdAt: 'desc' },
+    select: { property: { select: { slug: true } } },
+  })
+  return rows.map(r => r.property.slug)
+}
+
 export async function getNeighborhoods(): Promise<NeighborhoodDTO[]> {
   const rows = await db.neighborhood.findMany({ orderBy: { name: 'asc' } })
   return rows.map(n => ({

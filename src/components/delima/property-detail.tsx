@@ -48,15 +48,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { useInsights, useProperties } from '@/hooks/use-delima-data'
+import { useSavedToggle } from '@/hooks/use-saved'
 import { useAppStore } from '@/lib/store'
+import { useI18n, usePriceFormatter, useStatusLabel, useTypeLabel } from '@/lib/i18n'
 import {
   formatKes,
   formatNumber,
-  formatPriceForStatus,
   formatSqm,
   formatDate,
-  statusLabel,
-  typeLabel,
+  typeLabel as staticTypeLabel,
   whatsappLink,
 } from '@/lib/format'
 import type { PropertyDTO, PropertyStatus } from '@/lib/types'
@@ -110,6 +110,8 @@ function ViewingDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const { t } = useI18n()
+  const formatPrice = usePriceFormatter()
   const { toast } = useToast()
   const [form, setForm] = useState<ViewingForm>(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
@@ -156,15 +158,15 @@ function ViewingDialog({
       })
       if (!res.ok) throw new Error(`Request failed (${res.status})`)
       toast({
-        title: 'Viewing requested',
-        description: `${property.agent.name} will be in touch shortly to confirm ${property.title}.`,
+        title: t('viewing.successTitle'),
+        description: t('viewing.successDesc', { agent: property.agent.name, title: property.title }),
       })
       onOpenChange(false)
     } catch {
       toast({
         variant: 'destructive',
-        title: 'Request not sent',
-        description: 'We could not reach the concierge desk. Please try again or WhatsApp the agent.',
+        title: t('viewing.errorTitle'),
+        description: t('viewing.errorDesc'),
       })
     } finally {
       setSubmitting(false)
@@ -175,15 +177,15 @@ function ViewingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100vw-2rem)] max-w-lg rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-extrabold tracking-tight md:text-2xl">Request a viewing</DialogTitle>
+          <DialogTitle className="text-xl font-extrabold tracking-tight md:text-2xl">{t('viewing.title')}</DialogTitle>
           <DialogDescription>
-            {property.title} · {property.neighborhood} — {formatPriceForStatus(property.priceKes, property.status)}
+            {property.title} · {property.neighborhood} — {formatPrice(property.priceKes, property.status)}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-1">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label htmlFor="vr-name">Full name *</Label>
+              <Label htmlFor="vr-name">{t('booking.fullName')} *</Label>
               <Input
                 id="vr-name"
                 value={form.name}
@@ -195,7 +197,7 @@ function ViewingDialog({
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="vr-phone">Phone *</Label>
+              <Label htmlFor="vr-phone">{t('booking.phone')} *</Label>
               <Input
                 id="vr-phone"
                 type="tel"
@@ -210,7 +212,7 @@ function ViewingDialog({
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label htmlFor="vr-email">Email *</Label>
+              <Label htmlFor="vr-email">{t('booking.email')} *</Label>
               <Input
                 id="vr-email"
                 type="email"
@@ -223,7 +225,7 @@ function ViewingDialog({
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="vr-date">Preferred date</Label>
+              <Label htmlFor="vr-date">{t('booking.date')}</Label>
               <Input
                 id="vr-date"
                 type="date"
@@ -235,12 +237,12 @@ function ViewingDialog({
             </div>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="vr-message">Message</Label>
+            <Label htmlFor="vr-message">{t('booking.message')}</Label>
             <Textarea
               id="vr-message"
               value={form.message}
               onChange={e => set({ message: e.target.value })}
-              placeholder="Anything our agent should prepare for your visit…"
+              placeholder={t('viewing.messagePlaceholder')}
               rows={3}
               className="rounded-xl"
             />
@@ -248,15 +250,15 @@ function ViewingDialog({
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" className="h-11 rounded-xl" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             onClick={submit}
             disabled={!valid || submitting}
             className="btn-sun h-11 rounded-full px-6 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Submit viewing request"
+            aria-label={t('viewing.send')}
           >
-            {submitting ? 'Sending…' : 'Send request'}
+            {submitting ? t('booking.sending') : t('viewing.send')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -455,7 +457,7 @@ function buildJsonLd(p: PropertyDTO): Record<string, unknown> {
       '@id': `https://delima.co.ke/property/${p.slug}`,
     },
     image: p.images,
-    category: typeLabel[p.type],
+    category: staticTypeLabel[p.type],
     offers: {
       '@type': 'Offer',
       price: p.priceKes,
@@ -501,12 +503,14 @@ function buildJsonLd(p: PropertyDTO): Record<string, unknown> {
 /* -------------------------------- main --------------------------------- */
 
 export default function PropertyDetail() {
+  const { t } = useI18n()
+  const statusLabel = useStatusLabel()
+  const typeLabel = useTypeLabel()
+  const formatPrice = usePriceFormatter()
   const activeSlug = useAppStore(s => s.activeSlug)
   const setView = useAppStore(s => s.setView)
   const goHome = useAppStore(s => s.goHome)
   const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
-  const favorites = useAppStore(s => s.favorites)
-  const toggleFavorite = useAppStore(s => s.toggleFavorite)
   const compare = useAppStore(s => s.compare)
   const toggleCompare = useAppStore(s => s.toggleCompare)
   const { properties, loading, error } = useProperties()
@@ -524,7 +528,7 @@ export default function PropertyDetail() {
     [neighborhoods, property],
   )
 
-  const isFav = property ? favorites.includes(property.slug) : false
+  const { saved: isFav, toggle: toggleSaved } = useSavedToggle(property?.slug ?? '')
   const isComp = property ? compare.includes(property.slug) : false
   const compareFull = !isComp && compare.length >= 3
 
@@ -545,13 +549,13 @@ export default function PropertyDetail() {
       <Container className="py-20 md:py-28">
         <EmptyState
           icon={Home}
-          title="No property selected"
-          description="Choose a residence from the collection to see its full story."
+          title={t('detail.noSlugTitle')}
+          description={t('detail.noSlugBlurb')}
           className="min-h-72"
           action={
             <Button onClick={() => setView('properties')} className="btn-sun h-11 gap-2 rounded-full px-6 text-sm font-bold">
               <ArrowRight className="size-4" aria-hidden />
-              Browse properties
+              {t('common.browseProperties')}
             </Button>
           }
         />
@@ -588,12 +592,12 @@ export default function PropertyDetail() {
       <Container className="py-20 md:py-28">
         <EmptyState
           icon={TriangleAlert}
-          title="The listing desk is unreachable"
+          title={t('detail.errorTitle')}
           description={error}
           className="min-h-72"
           action={
             <Button variant="outline" onClick={() => window.location.reload()} className="h-11 gap-2 rounded-xl">
-              Try again
+              {t('detail.tryAgain')}
             </Button>
           }
         />
@@ -607,16 +611,16 @@ export default function PropertyDetail() {
       <Container className="py-20 md:py-28">
         <EmptyState
           icon={Home}
-          title="This listing is no longer available"
-          description="It may have found its new owner. The rest of the collection awaits."
+          title={t('detail.goneTitle')}
+          description={t('detail.goneBlurb')}
           className="min-h-72"
           action={
             <div className="flex flex-wrap justify-center gap-2.5">
               <Button onClick={() => setView('properties')} className="btn-sun h-11 rounded-full px-6 text-sm font-bold">
-                Browse properties
+                {t('common.browseProperties')}
               </Button>
               <Button variant="outline" onClick={goHome} className="h-11 rounded-xl">
-                Return home
+                {t('detail.returnHome')}
               </Button>
             </div>
           }
@@ -629,11 +633,11 @@ export default function PropertyDetail() {
   const waText = `Hi Delima, I'm interested in ${property.title} (${formatKes(property.priceKes)})`
 
   const specs: Array<{ icon: LucideIcon; value: string; label: string }> = [
-    { icon: BedDouble, value: property.bedrooms === 0 ? 'Studio' : String(property.bedrooms), label: 'Bedrooms' },
-    { icon: Bath, value: String(property.bathrooms), label: 'Bathrooms' },
-    { icon: Maximize, value: formatSqm(property.sqm), label: 'Size' },
-    { icon: Car, value: `${property.parking}`, label: 'Parking bays' },
-    { icon: CalendarDays, value: property.yearBuilt > 0 ? String(property.yearBuilt) : '—', label: 'Year built' },
+    { icon: BedDouble, value: property.bedrooms === 0 ? t('common.studio') : String(property.bedrooms), label: t('spec.bedrooms') },
+    { icon: Bath, value: String(property.bathrooms), label: t('spec.bathrooms') },
+    { icon: Maximize, value: formatSqm(property.sqm), label: t('spec.size') },
+    { icon: Car, value: `${property.parking}`, label: t('spec.parking') },
+    { icon: CalendarDays, value: property.yearBuilt > 0 ? String(property.yearBuilt) : '—', label: t('spec.yearBuilt') },
   ]
 
   return (
@@ -655,7 +659,7 @@ export default function PropertyDetail() {
               onClick={goHome}
               className="rounded px-1 py-0.5 transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              Home
+              {t('nav.home')}
             </button>
           </li>
           <li aria-hidden>
@@ -667,7 +671,7 @@ export default function PropertyDetail() {
               onClick={() => setView('properties')}
               className="rounded px-1 py-0.5 transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              Properties
+              {t('nav.properties')}
             </button>
           </li>
           <li aria-hidden>
@@ -686,7 +690,7 @@ export default function PropertyDetail() {
           {property.featured && (
             <Pill tone="outline" className="border-sun/60 bg-sun-soft text-sun-deep">
               <Star className="size-3 fill-sun text-sun" aria-hidden />
-              Featured
+              {t('common.featured')}
             </Pill>
           )}
           <Pill tone="outline">{typeLabel[property.type]}</Pill>
@@ -703,10 +707,10 @@ export default function PropertyDetail() {
           </div>
           <div className="sm:text-right">
             <p className="text-3xl font-extrabold tracking-tight text-brand">
-              {formatPriceForStatus(property.priceKes, property.status)}
+              {formatPrice(property.priceKes, property.status)}
             </p>
             <p className="mt-1.5 text-xs font-medium text-muted-foreground">
-              Listed {formatDate(property.createdAt)} · {formatNumber(property.views)} views
+              {t('detail.listedOn', { date: formatDate(property.createdAt) })} · {t('detail.views', { count: formatNumber(property.views) })}
               {' · '}
               <Star className="-mt-0.5 inline size-3.5 fill-sun text-sun" aria-hidden />
               {' '}{property.rating.toFixed(1)}
@@ -730,7 +734,7 @@ export default function PropertyDetail() {
 
           <section aria-labelledby="about-heading">
             <h2 id="about-heading" className="text-2xl font-extrabold tracking-tight text-ink">
-              About this home
+              {t('detail.description')}
             </h2>
             <p className="mt-4 whitespace-pre-line text-[15px] leading-7 text-foreground/80">
               {property.description}
@@ -740,7 +744,7 @@ export default function PropertyDetail() {
           {property.amenities.length > 0 && (
             <section aria-labelledby="amenities-heading">
               <h2 id="amenities-heading" className="text-2xl font-extrabold tracking-tight text-ink">
-                Amenities &amp; features
+                {t('detail.amenities')}
               </h2>
               <ul className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2" aria-label="Amenities">
                 {property.amenities.map(a => (
@@ -758,7 +762,7 @@ export default function PropertyDetail() {
 
           <section aria-labelledby="location-heading">
             <h2 id="location-heading" className="text-2xl font-extrabold tracking-tight text-ink">
-              Location &amp; neighbourhood
+              {t('detail.locationHeading')}
             </h2>
             <div className="card-modern mt-4 overflow-hidden">
               <div className="relative h-44 sm:h-56">
@@ -800,14 +804,14 @@ export default function PropertyDetail() {
                     aria-label={`Explore ${property.neighborhood} on the map`}
                   >
                     <MapIcon className="size-4" aria-hidden />
-                    Explore on map
+                    {t('detail.exploreMap')}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setFilterAndGo({ neighborhood: property.neighborhoodSlug }, 'properties')}
                     className="h-11 gap-2 rounded-xl"
                   >
-                    More homes in {property.neighborhood}
+                    {t('detail.moreHomes', { name: property.neighborhood })}
                     <ArrowRight className="size-4" aria-hidden />
                   </Button>
                 </div>
@@ -827,7 +831,7 @@ export default function PropertyDetail() {
                 aria-label={`Request a viewing of ${property.title}`}
               >
                 <CalendarClock className="size-4" aria-hidden />
-                Request a viewing
+                {t('detail.viewingCta')}
               </Button>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" className="h-11 gap-2 rounded-xl" asChild>
@@ -838,7 +842,7 @@ export default function PropertyDetail() {
                     aria-label={`Download brochure for ${property.title}`}
                   >
                     <Download className="size-4" aria-hidden />
-                    Brochure
+                    {t('detail.brochureShort')}
                   </a>
                 </Button>
                 <Button
@@ -852,7 +856,7 @@ export default function PropertyDetail() {
                         await navigator.share({ title: property.title, text: shareText, url: shareUrl })
                       } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
                         await navigator.clipboard.writeText(shareUrl)
-                        toast({ title: 'Link copied', description: 'Share it with anyone looking for a Nairobi home.' })
+                        toast({ title: t('detail.linkCopied') })
                       }
                     } catch {
                       // user cancelled or clipboard blocked — silent
@@ -861,7 +865,7 @@ export default function PropertyDetail() {
                   aria-label={`Share ${property.title}`}
                 >
                   <Share2 className="size-4" aria-hidden />
-                  Share
+                  {t('detail.share')}
                 </Button>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -869,12 +873,11 @@ export default function PropertyDetail() {
                   variant="outline"
                   aria-pressed={isFav}
                   onClick={() => {
-                    toggleFavorite(property.slug)
+                    toggleSaved(property.slug)
                     toast({
-                      title: isFav ? 'Removed from saved' : 'Saved to your collection',
-                      description: isFav
-                        ? `${property.title} was removed from your saved homes.`
-                        : `${property.title} now lives in your saved homes.`,
+                      title: isFav
+                        ? t('detail.removedToast', { title: property.title })
+                        : t('detail.savedToast', { title: property.title }),
                     })
                   }}
                   className={cn(
@@ -883,13 +886,13 @@ export default function PropertyDetail() {
                   )}
                 >
                   <Heart className={cn('size-4', isFav && 'fill-current')} aria-hidden />
-                  {isFav ? 'Saved' : 'Save'}
+                  {isFav ? t('common.saved') : t('common.save')}
                 </Button>
                 <Button
                   variant="outline"
                   aria-pressed={isComp}
                   disabled={compareFull}
-                  title={compareFull ? 'Compare holds up to 3 homes' : undefined}
+                  title={compareFull ? t('detail.compareFull') : undefined}
                   onClick={() => toggleCompare(property.slug)}
                   className={cn(
                     'h-11 gap-2 rounded-xl',
@@ -897,7 +900,7 @@ export default function PropertyDetail() {
                   )}
                 >
                   <Scale className="size-4" aria-hidden />
-                  {isComp ? 'Comparing' : 'Compare'}
+                  {isComp ? t('detail.comparing') : t('common.compare')}
                 </Button>
               </div>
             </div>
@@ -959,16 +962,16 @@ export default function PropertyDetail() {
 
             {/* Valuation cross-link */}
             <div className="rounded-2xl border border-sun/40 bg-sun-soft p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-sun-deep">Own a home?</p>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-sun-deep">{t('detail.ownHome')}</p>
               <p className="mt-1 text-sm leading-5 text-ink/80">
-                Thinking of selling or letting? Get a free, data-backed valuation.
+                {t('detail.ownHomeBlurb')}
               </p>
               <Button
                 variant="ghost"
                 onClick={() => setView('valuation')}
                 className="-ml-2 mt-1 h-11 gap-1.5 rounded-xl text-sun-deep hover:bg-sun/20 hover:text-sun-deep"
               >
-                Free valuation
+                {t('detail.freeValuation')}
                 <ArrowRight className="size-4" aria-hidden />
               </Button>
             </div>
@@ -979,9 +982,9 @@ export default function PropertyDetail() {
       {/* Similar homes */}
       {similar.length > 0 && (
         <section aria-labelledby="similar-heading" className="mt-16">
-          <p className="eyebrow">Keep exploring</p>
+          <p className="eyebrow">{t('detail.keepExploring')}</p>
           <h2 id="similar-heading" className="mt-1 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
-            Similar homes in {property.neighborhood}
+            {t('detail.similarIn', { name: property.neighborhood })}
           </h2>
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {similar.map(p => (

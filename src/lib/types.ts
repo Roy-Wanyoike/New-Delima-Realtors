@@ -12,7 +12,7 @@ export type LeadSource =
   | 'CONTACT_FORM' | 'VALUATION' | 'AI_ASSISTANT' | 'VIEWING_REQUEST' | 'NEWSLETTER'
 
 export type View =
-  | 'home' | 'properties' | 'property' | 'map' | 'insights' | 'agents' | 'finance' | 'admin' | 'valuation'
+  | 'home' | 'properties' | 'property' | 'map' | 'insights' | 'agents' | 'finance' | 'admin' | 'valuation' | 'account'
 
 export interface PropertyDTO {
   id: string

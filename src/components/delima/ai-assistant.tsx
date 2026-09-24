@@ -18,22 +18,17 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
 import { useAppStore } from '@/lib/store'
 import { PropertyMiniCard } from '@/components/delima/mini-cards'
+import { useI18n } from '@/lib/i18n'
 import type { AssistantMsg, AssistantResponse } from '@/lib/types'
 import { cn, fetchWithTimeout } from '@/lib/utils'
 
-type QuickPrompt = { label: string; kind: 'chat' | 'valuation' }
+type QuickPrompt = { labelKey: 'ai.prompt1' | 'ai.prompt2' | 'ai.prompt3'; kind: 'chat' | 'valuation' }
 
 const QUICK_PROMPTS: QuickPrompt[] = [
-  { label: 'Villas in Karen under KES 80M', kind: 'chat' },
-  { label: '3-bed apartments in Kilimani', kind: 'chat' },
-  { label: "What's my home worth?", kind: 'valuation' },
+  { labelKey: 'ai.prompt1', kind: 'chat' },
+  { labelKey: 'ai.prompt2', kind: 'chat' },
+  { labelKey: 'ai.prompt3', kind: 'valuation' },
 ]
-
-const GREETING: AssistantMsg = {
-  role: 'assistant',
-  content:
-    "Karibu! I'm Delima AI, your Nairobi property concierge. Ask me to find villas, apartments or investment gems — I know every listing in our portfolio.",
-}
 
 /**
  * Lightweight markdown rendering for assistant replies: **bold**, *italic*
@@ -85,9 +80,12 @@ export function AiAssistant() {
   const openProperty = useAppStore((s) => s.openProperty)
   const setFilterAndGo = useAppStore((s) => s.setFilterAndGo)
   const setView = useAppStore((s) => s.setView)
+  const { t } = useI18n()
   const { toast } = useToast()
 
-  const [messages, setMessages] = useState<AssistantMsg[]>([GREETING])
+  const [messages, setMessages] = useState<AssistantMsg[]>([
+    { role: 'assistant', content: t('ai.greeting') },
+  ])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -124,21 +122,21 @@ export function AiAssistant() {
         },
         60_000,
       )
-      if (!res.ok) throw new Error('Our concierge is taking longer than usual — please retry in a moment.')
+      if (!res.ok) throw new Error(t('ai.slow'))
       const data = (await res.json()) as AssistantResponse
       setMessages((prev) => [...prev, { role: 'assistant', content: data.reply, properties: data.properties }])
       if (data.filters && Object.keys(data.filters).length > 0) {
         // Filter handoff: the chat refines the shared search and jumps to the
         // listings grid so the matches are immediately visible.
         setFilterAndGo(data.filters)
-        toast({ title: 'Search filters applied', description: 'Your chat refined the active search — here are the matches.' })
+        toast({ title: t('ai.filtersApplied'), description: t('ai.filtersAppliedDesc') })
       }
     } catch (e) {
       const isAbort = e instanceof Error && (e.name === 'AbortError' || /abort/i.test(e.message))
       if (isAbort) {
-        setError('The response took too long. Please try a shorter question.')
+        setError(t('ai.timeout'))
       } else {
-        setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
+        setError(e instanceof Error ? e.message : t('ai.error'))
       }
     } finally {
       setSending(false)
@@ -167,7 +165,7 @@ export function AiAssistant() {
       setView('valuation')
       return
     }
-    send(p.label)
+    send(t(p.labelKey))
   }
 
   return (
@@ -185,7 +183,7 @@ export function AiAssistant() {
           >
             <Button
               size="icon"
-              aria-label="Open Delima AI assistant"
+              aria-label={t('ai.open')}
               onClick={() => setOpen(true)}
               className="relative size-14 rounded-full border-0 bg-brand text-white shadow-xl transition-transform hover:scale-105 hover:bg-brand-mid"
             >
@@ -206,7 +204,7 @@ export function AiAssistant() {
             exit={{ opacity: 0, y: 20, scale: 0.96 }}
             transition={{ type: 'spring', stiffness: 320, damping: 28 }}
             role="dialog"
-            aria-label="Delima AI assistant chat"
+            aria-label={t('ai.chatLabel')}
             className="fixed bottom-24 right-4 z-50 flex h-[70vh] max-h-[640px] w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-line bg-white soft-shadow sm:right-6 sm:w-[400px]"
           >
             {/* header */}
@@ -221,13 +219,13 @@ export function AiAssistant() {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-mid opacity-60" />
                     <span className="relative inline-flex size-2 rounded-full bg-brand-mid" />
                   </span>
-                  Online · replies in seconds
+                  {t('ai.online')}
                 </p>
               </div>
               <Button
                 size="icon"
                 variant="ghost"
-                aria-label="Close AI assistant"
+                aria-label={t('ai.close')}
                 onClick={() => setOpen(false)}
                 className="size-11 shrink-0 rounded-full hover:bg-brand-soft hover:text-brand"
               >
@@ -237,7 +235,7 @@ export function AiAssistant() {
 
             {/* messages */}
             <ScrollArea className="min-h-0 flex-1">
-              <div role="log" aria-live="polite" aria-label="Conversation with Delima AI" className="flex flex-col gap-3 px-4 py-4">
+              <div role="log" aria-live="polite" aria-label={t('ai.conversation')} className="flex flex-col gap-3 px-4 py-4">
                 {messages.map((m, i) => (
                   <div key={i} className={cn('flex flex-col gap-2', m.role === 'user' ? 'items-end' : 'items-start')}>
                     <div
@@ -261,11 +259,11 @@ export function AiAssistant() {
                   <div className="flex flex-col items-start gap-1.5">
                     <TypingDots />
                     <span aria-live="polite" className="sr-only">
-                      {stillThinking ? "Still thinking… (Nairobi's market is deep)" : 'Delima AI is typing'}
+                      {stillThinking ? t('ai.thinkingHint') : t('ai.typing')}
                     </span>
                     {stillThinking && (
                       <p className="px-1 text-[11px] italic text-muted-foreground">
-                        Still thinking… (Nairobi&apos;s market is deep)
+                        {t('ai.thinkingHint')}
                       </p>
                     )}
                   </div>
@@ -279,7 +277,7 @@ export function AiAssistant() {
               <div className="flex flex-wrap gap-2 px-4 pb-3">
                 {QUICK_PROMPTS.map((p) => (
                   <button
-                    key={p.label}
+                    key={p.labelKey}
                     onClick={() => runQuickPrompt(p)}
                     className={cn(
                       'flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors',
@@ -289,7 +287,7 @@ export function AiAssistant() {
                     )}
                   >
                     {p.kind === 'valuation' && <Sparkles className="size-3.5" aria-hidden="true" />}
-                    {p.label}
+                    {t(p.labelKey)}
                   </button>
                 ))}
               </div>
@@ -298,19 +296,19 @@ export function AiAssistant() {
             {/* error + human fallback */}
             {error && (
               <div className="mx-4 mb-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-xs">
-                <p>{error}. Please try again.</p>
+                <p>{error}</p>
                 <div className="mt-1 flex items-center gap-4">
                   <button
                     onClick={retry}
                     className="inline-flex min-h-[44px] items-center gap-1.5 font-bold text-destructive"
                   >
-                    <RotateCcw className="size-3.5" aria-hidden="true" /> Retry
+                    <RotateCcw className="size-3.5" aria-hidden="true" /> {t('ai.retry')}
                   </button>
                   <a
                     href="tel:+254727523752"
                     className="inline-flex min-h-[44px] items-center gap-1.5 underline underline-offset-2 hover:text-brand"
                   >
-                    <Phone className="size-3.5" aria-hidden="true" /> Prefer a human? Call +254 727 523 752
+                    <Phone className="size-3.5" aria-hidden="true" /> {t('ai.preferHuman')}
                   </a>
                 </div>
               </div>
@@ -324,15 +322,15 @@ export function AiAssistant() {
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about Nairobi property…"
-                aria-label="Message Delima AI"
+                placeholder={t('ai.placeholder')}
+                aria-label={t('ai.messageAria')}
                 disabled={sending}
                 className="h-11 flex-1 rounded-full border-line bg-white"
               />
               <Button
                 type="submit"
                 size="icon"
-                aria-label="Send message"
+                aria-label={t('ai.sendAria')}
                 disabled={sending || !input.trim()}
                 className="size-11 shrink-0 rounded-full border-0 bg-brand text-white hover:bg-brand-mid"
               >

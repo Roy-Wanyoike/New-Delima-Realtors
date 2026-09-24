@@ -1,0 +1,49 @@
+name: Lighthouse CI
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly audit, Mondays 06:00 UTC — trending, not blocking.
+    - cron: '0 6 * * 1'
+
+# Lighthouse CI (issue #63) — audits the production homepage for performance,
+# accessibility, best-practices and SEO regressions against a served build.
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Reproduce sandbox DB path
+        run: sudo mkdir -p /home/z && sudo ln -s "$PWD" /home/z/my-project
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Provision database (schema + seed)
+        env:
+          DATABASE_URL: file:/home/z/my-project/db/custom.db
+        run: |
+          bunx prisma db push --skip-generate
+          bun prisma/seed.ts
+
+      - name: Build
+        run: bun run build
+
+      - name: Serve production build
+        run: |
+          bun run start &
+          sleep 8
+
+      - name: Run Lighthouse
+        run: |
+          npm install -g @lhci/cli@0.14.x
+          lhci autorun --collect.url=http://127.0.0.1:3000 --collect.numberOfRuns=3 --assert.preset=lighthouse:recommended || true
+        env:
+          LHCI_GITHUB_APP_TOKEN: ''

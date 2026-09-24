@@ -1,0 +1,51 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Playwright e2e (issue #63) — runs the golden-path specs (smoke + buyer
+# accounts + i18n toggle) against a dev server on ubuntu-latest. Non-blocking
+# for the quality gate initially; flip to required once green for a week.
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Reproduce sandbox DB path
+        run: sudo mkdir -p /home/z && sudo ln -s "$PWD" /home/z/my-project
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+
+      - name: Provision database (schema + seed)
+        env:
+          DATABASE_URL: file:/home/z/my-project/db/custom.db
+        run: |
+          bunx prisma db push --skip-generate
+          bun prisma/seed.ts
+
+      - name: Run e2e specs
+        run: bunx playwright test --project=chromium
+        env:
+          RATE_LIMIT_DISABLED: '1'
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

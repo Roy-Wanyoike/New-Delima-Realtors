@@ -55,6 +55,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useProperties } from '@/hooks/use-delima-data'
 import { useAppStore } from '@/lib/store'
+import { useI18n } from '@/lib/i18n'
 import { formatKes } from '@/lib/format'
 import type { PropertyDTO } from '@/lib/types'
 import { DismissibleNote, Reveal, Section, StatBlock } from './ui-kit'
@@ -355,6 +356,7 @@ function useAcquisitionCosts(price: number): { rows: CostRow[]; total: string } 
 export default function FinanceView() {
   const { properties, loading, error } = useProperties()
   const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
+  const { t } = useI18n()
 
   // ---- mortgage inputs ----
   const [price, setPrice] = useState(25_000_000)
@@ -424,13 +426,12 @@ export default function FinanceView() {
       <Section className="pb-16 sm:pb-20">
         {/* ---------------- header ---------------- */}
         <Reveal className="mb-10 max-w-2xl sm:mb-12">
-          <p className="eyebrow mb-3">Finance desk</p>
+          <p className="eyebrow mb-3">{t('finance.eyebrow')}</p>
           <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-            Mortgage &amp; ownership costs
+            {t('finance.titleFull')}
           </h1>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Run the numbers before you fall in love with the view. Kenyan rates, honest math,
-            zero surprises — from deposit to final payment.
+            {t('finance.heroSub')}
           </p>
           <div className="mt-6 h-1 w-14 rounded-full bg-sun" aria-hidden="true" />
         </Reveal>
@@ -442,14 +443,14 @@ export default function FinanceView() {
               className="min-h-11 gap-2 rounded-full py-2 text-sm font-semibold sm:text-[0.95rem]"
             >
               <Calculator className="size-4" aria-hidden="true" />
-              Mortgage
+              {t('finance.tabMortgage')}
             </TabsTrigger>
             <TabsTrigger
               value="affordability"
               className="min-h-11 gap-2 rounded-full py-2 text-sm font-semibold sm:text-[0.95rem]"
             >
               <Wallet className="size-4" aria-hidden="true" />
-              Affordability
+              {t('finance.tabAfford')}
             </TabsTrigger>
           </TabsList>
 
@@ -464,8 +465,8 @@ export default function FinanceView() {
                       <Landmark className="size-5" aria-hidden="true" />
                     </span>
                     <div>
-                      <h2 className="text-lg font-bold text-ink">Mortgage calculator</h2>
-                      <p className="text-sm text-muted-foreground">Shape the deal, we handle the arithmetic.</p>
+                      <h2 className="text-lg font-bold text-ink">{t('finance.calcTitle')}</h2>
+                      <p className="text-sm text-muted-foreground">{t('finance.calcSub')}</p>
                     </div>
                   </header>
 
@@ -633,7 +634,7 @@ export default function FinanceView() {
                         <Receipt className="size-5" aria-hidden="true" />
                       </span>
                       <div>
-                        <h2 className="text-lg font-bold text-ink">One-off acquisition costs</h2>
+                        <h2 className="text-lg font-bold text-ink">{t('finance.costsTitle')}</h2>
                         <p className="text-sm text-muted-foreground">On top of the purchase price.</p>
                       </div>
                     </header>

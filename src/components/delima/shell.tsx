@@ -22,11 +22,14 @@ import {
   Menu,
   MessageCircle,
   Phone,
+  UserRound,
   X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { FilterState, View } from '@/lib/types'
 import { useAppStore } from '@/lib/store'
+import { useBuyerStore } from '@/lib/buyer-store'
+import { useI18n, type DictKey } from '@/lib/i18n'
 import { useInsights } from '@/hooks/use-delima-data'
 import { useToast } from '@/hooks/use-toast'
 import { whatsappLink } from '@/lib/format'
@@ -34,6 +37,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { LanguageSwitcher } from '@/components/delima/language-switcher'
 import {
   Dialog,
   DialogContent,
@@ -83,7 +87,7 @@ interface NavActions {
 }
 
 interface NavItem {
-  label: string
+  labelKey: DictKey
   icon?: LucideIcon
   active: (view: View, status: FilterState['status']) => boolean
   go: (actions: NavActions) => void
@@ -91,23 +95,23 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    label: 'Home',
+    labelKey: 'nav.home',
     icon: Home,
     active: view => view === 'home',
     go: ({ setView }) => setView('home'),
   },
   {
-    label: 'Buy',
+    labelKey: 'nav.buy',
     active: (view, status) => view === 'properties' && status === 'FOR_SALE',
     go: ({ setFilterAndGo }) => setFilterAndGo({ status: 'FOR_SALE' }, 'properties'),
   },
   {
-    label: 'Rent',
+    labelKey: 'nav.rent',
     active: (view, status) => view === 'properties' && status === 'FOR_RENT',
     go: ({ setFilterAndGo }) => setFilterAndGo({ status: 'FOR_RENT' }, 'properties'),
   },
   {
-    label: 'Properties',
+    labelKey: 'nav.properties',
     active: (view, status) =>
       (view === 'properties' || view === 'property') &&
       status !== 'FOR_SALE' &&
@@ -115,12 +119,12 @@ const NAV_ITEMS: NavItem[] = [
     go: ({ setView }) => setView('properties'),
   },
   {
-    label: 'Insights',
+    labelKey: 'nav.insights',
     active: view => view === 'insights',
     go: ({ setView }) => setView('insights'),
   },
   {
-    label: 'Team',
+    labelKey: 'nav.team',
     icon: Compass,
     active: view => view === 'agents',
     go: ({ setView }) => setView('agents'),
@@ -170,6 +174,7 @@ const EMPTY_BOOKING: BookingForm = { name: '', email: '', phone: '', date: '', m
 function BookingDialog() {
   const open = useShellUi(s => s.bookingOpen)
   const setOpen = useShellUi(s => s.setBookingOpen)
+  const { t } = useI18n()
   const { toast } = useToast()
   const [form, setForm] = useState<BookingForm>(EMPTY_BOOKING)
   const [submitting, setSubmitting] = useState(false)
@@ -211,12 +216,12 @@ function BookingDialog() {
 
       if (res.ok) {
         toast({
-          title: 'Viewing request received',
-          description: 'Thank you! Our team will confirm your appointment shortly.',
+          title: t('booking.successTitle'),
+          description: t('booking.successDesc'),
         })
         setOpen(false)
       } else {
-        let description = 'Please try again in a moment.'
+        let description = t('booking.errorDesc')
         try {
           const data: unknown = await res.json()
           if (data && typeof data === 'object' && 'error' in data) {
@@ -228,12 +233,12 @@ function BookingDialog() {
         } catch {
           // non-JSON error body — keep the generic copy
         }
-        toast({ title: 'Could not send request', description, variant: 'destructive' })
+        toast({ title: t('booking.errorTitle'), description, variant: 'destructive' })
       }
     } catch {
       toast({
-        title: 'Network error',
-        description: 'Please check your connection and try again.',
+        title: t('booking.networkError'),
+        description: t('booking.networkErrorDesc'),
         variant: 'destructive',
       })
     } finally {
@@ -247,17 +252,16 @@ function BookingDialog() {
         <DialogHeader className="text-left">
           <span className="eyebrow mb-1">Delima Realtors</span>
           <DialogTitle className="text-2xl font-extrabold tracking-tight text-ink">
-            Book a Viewing
+            {t('booking.title')}
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed">
-            Tell us when suits you and a Delima agent will confirm your private tour within
-            one business day.
+            {t('booking.blurb')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={e => void handleSubmit(e)} className="mt-2 grid gap-4">
           <div className="grid gap-1.5">
-            <Label htmlFor="booking-name">Full name</Label>
+            <Label htmlFor="booking-name">{t('booking.fullName')}</Label>
             <Input
               id="booking-name"
               required
@@ -272,7 +276,7 @@ function BookingDialog() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label htmlFor="booking-email">Email</Label>
+              <Label htmlFor="booking-email">{t('booking.email')}</Label>
               <Input
                 id="booking-email"
                 type="email"
@@ -285,7 +289,7 @@ function BookingDialog() {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="booking-phone">Phone</Label>
+              <Label htmlFor="booking-phone">{t('booking.phone')}</Label>
               <Input
                 id="booking-phone"
                 type="tel"
@@ -301,7 +305,7 @@ function BookingDialog() {
           </div>
 
           <div className="grid gap-1.5">
-            <Label htmlFor="booking-date">Preferred date</Label>
+            <Label htmlFor="booking-date">{t('booking.date')}</Label>
             <Input
               id="booking-date"
               type="date"
@@ -314,14 +318,14 @@ function BookingDialog() {
 
           <div className="grid gap-1.5">
             <Label htmlFor="booking-message">
-              Message <span className="font-normal text-muted-foreground">(optional)</span>
+              {t('booking.message')} <span className="font-normal text-muted-foreground">{t('booking.optional')}</span>
             </Label>
             <Textarea
               id="booking-message"
               rows={3}
               value={form.message}
               onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-              placeholder="Which homes would you like to see?"
+              placeholder={t('booking.messagePlaceholder')}
               className="resize-none rounded-xl"
             />
           </div>
@@ -337,10 +341,10 @@ function BookingDialog() {
             ) : (
               <CalendarCheck className="size-4" aria-hidden="true" />
             )}
-            {submitting ? 'Sending…' : 'Request Viewing'}
+            {submitting ? t('booking.sending') : t('booking.submit')}
           </Button>
           <p className="text-center text-[11px] text-muted-foreground">
-            By submitting you agree to be contacted about this enquiry.
+            {t('booking.consent')}
           </p>
         </form>
       </DialogContent>
@@ -360,6 +364,8 @@ function MobileMenuSheet() {
   const status = useAppStore(s => s.filters.status)
   const setView = useAppStore(s => s.setView)
   const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
+  const { t } = useI18n()
+  const buyer = useBuyerStore(s => s.buyer)
 
   return (
     <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
@@ -369,18 +375,18 @@ function MobileMenuSheet() {
             <BrandMark />
           </div>
           <SheetDescription className="sr-only">
-            Delima Realtors navigation menu
+            {t('nav.menu')}
           </SheetDescription>
-          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <SheetTitle className="sr-only">{t('nav.menu')}</SheetTitle>
         </SheetHeader>
 
-        <nav aria-label="Mobile menu" className="delima-scroll flex-1 overflow-y-auto px-4 py-4">
+        <nav aria-label={t('nav.menu')} className="delima-scroll flex-1 overflow-y-auto px-4 py-4">
           <ul className="flex flex-col gap-1">
             {NAV_ITEMS.map(item => {
               const active = item.active(view, status)
               const Icon = item.icon
               return (
-                <li key={item.label}>
+                <li key={item.labelKey}>
                   <button
                     type="button"
                     onClick={() => {
@@ -394,7 +400,7 @@ function MobileMenuSheet() {
                     )}
                   >
                     {Icon ? <Icon className="size-4.5 shrink-0" aria-hidden="true" /> : null}
-                    {item.label}
+                    {t(item.labelKey)}
                     {active ? (
                       <span className="ml-auto size-1.5 rounded-full bg-sun" aria-hidden="true" />
                     ) : (
@@ -404,7 +410,31 @@ function MobileMenuSheet() {
                 </li>
               )
             })}
+
+            {/* account entry */}
+            <li className="mt-1 border-t border-line pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setView('account')
+                  setMenuOpen(false)
+                }}
+                aria-current={view === 'account' ? 'page' : undefined}
+                className={cn(
+                  'flex min-h-[48px] w-full items-center gap-3 rounded-xl px-3 text-base font-medium transition-colors hover:bg-brand-soft/70 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  view === 'account' && 'bg-brand-soft/70 font-bold text-brand',
+                )}
+              >
+                <UserRound className="size-4.5 shrink-0" aria-hidden="true" />
+                {buyer ? t('nav.account') : t('header.signIn')}
+                <ChevronRight className="ml-auto size-4 text-muted-foreground" aria-hidden="true" />
+              </button>
+            </li>
           </ul>
+
+          <div className="mt-4 px-1">
+            <LanguageSwitcher />
+          </div>
         </nav>
 
         <div className="border-t border-line px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5">
@@ -423,7 +453,7 @@ function MobileMenuSheet() {
             className="btn-sun mt-3 min-h-[48px] w-full gap-2 rounded-full text-sm font-bold"
           >
             <CalendarCheck className="size-4" aria-hidden="true" />
-            Book a Viewing
+            {t('header.bookViewing')}
           </Button>
         </div>
       </SheetContent>
@@ -444,6 +474,9 @@ export function DelimaHeader() {
   const setMenuOpen = useShellUi(s => s.setMenuOpen)
   const setBookingOpen = useShellUi(s => s.setBookingOpen)
   const menuOpen = useShellUi(s => s.menuOpen)
+  const buyer = useBuyerStore(s => s.buyer)
+  const buyerStatus = useBuyerStore(s => s.status)
+  const { t } = useI18n()
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -478,7 +511,7 @@ export function DelimaHeader() {
               const active = item.active(view, status)
               return (
                 <button
-                  key={item.label}
+                  key={item.labelKey}
                   type="button"
                   onClick={() => item.go({ setView, setFilterAndGo })}
                   aria-current={active ? 'page' : undefined}
@@ -487,7 +520,7 @@ export function DelimaHeader() {
                     active ? 'font-bold text-brand' : 'text-ink/70',
                   )}
                 >
-                  {item.label}
+                  {t(item.labelKey)}
                   {active && (
                     <span
                       className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-sun"
@@ -501,6 +534,9 @@ export function DelimaHeader() {
 
           {/* right cluster */}
           <div className="flex items-center gap-1.5 sm:gap-2.5">
+            <div className="hidden md:block">
+              <LanguageSwitcher />
+            </div>
             <a
               href={AGENT_PHONE_TEL}
               className="hidden min-h-[44px] items-center gap-2 rounded-full px-3 text-sm font-semibold text-ink transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:flex"
@@ -508,19 +544,44 @@ export function DelimaHeader() {
               <Phone className="size-4 text-sun-deep" aria-hidden="true" />
               {AGENT_PHONE_DISPLAY}
             </a>
+            {/* account / sign-in */}
+            <button
+              type="button"
+              onClick={() => setView('account')}
+              aria-label={buyer ? t('header.account') : t('header.signIn')}
+              aria-current={view === 'account' ? 'page' : undefined}
+              className={cn(
+                'inline-flex min-h-[44px] items-center gap-2 rounded-full px-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                view === 'account'
+                  ? 'bg-brand-soft/70 font-bold text-brand'
+                  : 'text-ink/80 hover:bg-brand-soft/70 hover:text-brand',
+              )}
+            >
+              {buyer && buyerStatus === 'authed' ? (
+                <span
+                  aria-hidden="true"
+                  className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-brand to-brand-mid text-xs font-extrabold text-white"
+                >
+                  {buyer.name.trim().charAt(0).toUpperCase()}
+                </span>
+              ) : (
+                <UserRound className="size-5" aria-hidden="true" />
+              )}
+              <span className="hidden lg:inline">{buyer ? t('header.account') : t('header.signIn')}</span>
+            </button>
             <button
               type="button"
               onClick={() => setBookingOpen(true)}
               className="btn-sun inline-flex min-h-[44px] items-center gap-2 rounded-full px-4 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
             >
               <CalendarCheck className="size-4 shrink-0" aria-hidden="true" />
-              <span className="hidden sm:inline">Book a Viewing</span>
-              <span className="sm:hidden">Book</span>
+              <span className="hidden sm:inline">{t('header.bookViewing')}</span>
+              <span className="sm:hidden">{t('header.bookShort')}</span>
             </button>
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
-              aria-label="Open navigation menu"
+              aria-label={t('header.openMenu')}
               aria-expanded={menuOpen}
               className="inline-flex size-11 items-center justify-center rounded-full text-ink transition-colors hover:bg-brand-soft/70 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
             >
@@ -541,7 +602,7 @@ export function DelimaHeader() {
 /* ------------------------------------------------------------------ */
 
 interface MobileNavItem {
-  label: string
+  labelKey: DictKey
   icon: LucideIcon
   active: (view: View) => boolean
   go: (actions: NavActions & { setMenuOpen: (open: boolean) => void }) => void
@@ -549,33 +610,34 @@ interface MobileNavItem {
 
 const MOBILE_NAV_ITEMS: MobileNavItem[] = [
   {
-    label: 'Home',
+    labelKey: 'nav.home',
     icon: Home,
     active: view => view === 'home',
     go: ({ setView }) => setView('home'),
   },
   {
-    label: 'Explore',
+    labelKey: 'nav.explore',
     icon: Compass,
     active: view => view === 'properties' || view === 'property',
     go: ({ setView }) => setView('properties'),
   },
   {
-    label: 'Map',
+    labelKey: 'nav.map',
     icon: Map,
     active: view => view === 'map',
     go: ({ setView }) => setView('map'),
   },
   {
-    label: 'Insights',
+    labelKey: 'nav.insights',
     icon: LineChart,
     active: view => view === 'insights',
     go: ({ setView }) => setView('insights'),
   },
   {
-    label: 'More',
+    labelKey: 'nav.more',
     icon: Menu,
-    active: view => view === 'agents' || view === 'finance' || view === 'admin' || view === 'valuation',
+    active: view =>
+      view === 'agents' || view === 'finance' || view === 'admin' || view === 'valuation' || view === 'account',
     go: ({ setMenuOpen }) => setMenuOpen(true),
   },
 ]
@@ -585,6 +647,7 @@ export function MobileNav() {
   const setView = useAppStore(s => s.setView)
   const setFilterAndGo = useAppStore(s => s.setFilterAndGo)
   const setMenuOpen = useShellUi(s => s.setMenuOpen)
+  const { t } = useI18n()
 
   return (
     <nav
@@ -597,7 +660,7 @@ export function MobileNav() {
           const Icon = item.icon
           return (
             <button
-              key={item.label}
+              key={item.labelKey}
               type="button"
               onClick={() => item.go({ setView, setFilterAndGo, setMenuOpen })}
               aria-current={active ? 'page' : undefined}
@@ -607,7 +670,7 @@ export function MobileNav() {
               )}
             >
               <Icon className="size-5" aria-hidden="true" />
-              <span className="text-[10px] font-semibold tracking-wide">{item.label}</span>
+              <span className="text-[10px] font-semibold tracking-wide">{t(item.labelKey)}</span>
               {active && (
                 <span className="absolute top-1.5 size-1 rounded-full bg-sun" aria-hidden="true" />
               )}
@@ -624,26 +687,26 @@ export function MobileNav() {
 /* ------------------------------------------------------------------ */
 
 interface FooterLink {
-  label: string
+  labelKey: DictKey
   go: (actions: NavActions) => void
 }
 
 const EXPLORE_LINKS: FooterLink[] = [
   {
-    label: 'Buy',
+    labelKey: 'footer.buy',
     go: ({ setFilterAndGo }) => setFilterAndGo({ status: 'FOR_SALE' }, 'properties'),
   },
   {
-    label: 'Rent',
+    labelKey: 'footer.rent',
     go: ({ setFilterAndGo }) => setFilterAndGo({ status: 'FOR_RENT' }, 'properties'),
   },
   {
-    label: 'New Developments',
+    labelKey: 'footer.newDevelopments',
     go: ({ setFilterAndGo }) => setFilterAndGo({ status: 'NEW_DEVELOPMENT' }, 'properties'),
   },
-  { label: 'Map Search', go: ({ setView }) => setView('map') },
-  { label: 'Market Insights', go: ({ setView }) => setView('insights') },
-  { label: 'Mortgage Tools', go: ({ setView }) => setView('finance') },
+  { labelKey: 'footer.mapSearch', go: ({ setView }) => setView('map') },
+  { labelKey: 'footer.marketInsights', go: ({ setView }) => setView('insights') },
+  { labelKey: 'footer.mortgageTools', go: ({ setView }) => setView('finance') },
 ]
 
 const FALLBACK_NEIGHBORHOODS: Array<{ slug: string; name: string }> = [
@@ -674,8 +737,10 @@ export function DelimaFooter() {
   const setBookingOpen = useShellUi(s => s.setBookingOpen)
   const goHome = useAppStore(s => s.goHome)
   const { neighborhoods, loading: hoodsLoading } = useInsights()
+  const { t } = useI18n()
   const { toast } = useToast()
   const openAdmin = () => setView('admin')
+  const openAccount = () => setView('account')
   const [subEmail, setSubEmail] = useState('')
   const [subscribing, setSubscribing] = useState(false)
 
@@ -698,23 +763,23 @@ export function DelimaFooter() {
       if (res.status === 201) {
         setSubEmail('')
         toast({
-          title: 'Welcome to the Delima Circle',
-          description: 'Market intel and off-market homes — straight to your inbox.',
+          title: t('footer.subscribeSuccess'),
+          description: t('footer.subscribeSuccessDesc'),
         })
       } else if (res.status === 200) {
         setSubEmail('')
-        toast({ title: "You're already in the Delima Circle" })
+        toast({ title: t('footer.subscribeAlready') })
       } else {
         toast({
-          title: 'Subscription failed',
-          description: 'Please check your email address and try again.',
+          title: t('footer.subscribeFailed'),
+          description: t('footer.subscribeFailedDesc'),
           variant: 'destructive',
         })
       }
     } catch {
       toast({
-        title: 'Subscription failed',
-        description: 'Please check your connection and try again.',
+        title: t('footer.subscribeFailed'),
+        description: t('footer.subscribeNetworkDesc'),
         variant: 'destructive',
       })
     } finally {
@@ -736,9 +801,7 @@ export function DelimaFooter() {
             <BrandMark onDark />
           </button>
           <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/60">
-            Nairobi&rsquo;s modern address for exceptional homes — from leafy Karen villas to
-            penthouses above Westlands. Data-driven advice, honest pricing, and agents who
-            answer.
+            {t('footer.tagline')}
           </p>
           <div className="mt-6 flex items-center gap-2">
             {SOCIAL_LINKS.map(({ label, icon: Icon }) => (
@@ -758,23 +821,23 @@ export function DelimaFooter() {
             className="btn-sun mt-7 inline-flex min-h-[44px] items-center gap-2 rounded-full px-5 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
           >
             <CalendarCheck className="size-4" aria-hidden="true" />
-            Book a Viewing
+            {t('header.bookViewing')}
           </button>
         </Reveal>
 
         {/* explore */}
         <Reveal delay={0.06}>
           <nav aria-label="Footer explore">
-            <FooterHeading>Explore</FooterHeading>
+            <FooterHeading>{t('footer.explore')}</FooterHeading>
             <ul className="mt-4">
               {EXPLORE_LINKS.map(link => (
-                <li key={link.label}>
+                <li key={link.labelKey}>
                   <button
                     type="button"
                     onClick={() => link.go({ setView, setFilterAndGo })}
                     className="flex min-h-[44px] w-full items-center text-left text-sm text-white/65 transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
                   >
-                    {link.label}
+                    {t(link.labelKey)}
                   </button>
                 </li>
               ))}
@@ -785,7 +848,7 @@ export function DelimaFooter() {
         {/* neighborhoods */}
         <Reveal delay={0.12}>
           <nav aria-label="Footer neighborhoods">
-            <FooterHeading>Neighborhoods</FooterHeading>
+            <FooterHeading>{t('footer.neighborhoods')}</FooterHeading>
             <ul className="mt-4">
               {footerHoods.map(hood => (
                 <li key={hood.slug}>
@@ -805,7 +868,7 @@ export function DelimaFooter() {
         {/* contact + newsletter */}
         <Reveal delay={0.18}>
           <div>
-            <FooterHeading>Contact</FooterHeading>
+            <FooterHeading>{t('footer.contact')}</FooterHeading>
             <ul className="mt-4">
               <li className="flex min-h-[44px] items-start gap-2.5 text-sm leading-relaxed text-white/65">
                 <MapPin className="mt-0.5 size-4 shrink-0 text-sun" aria-hidden="true" />
@@ -837,17 +900,16 @@ export function DelimaFooter() {
                   className="flex min-h-[44px] items-center gap-2.5 text-sm text-white/65 transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
                 >
                   <MessageCircle className="size-4 shrink-0 text-sun" aria-hidden="true" />
-                  WhatsApp us
+                  {t('footer.whatsappUs')}
                 </a>
               </li>
             </ul>
           </div>
 
           <div className="mt-6">
-            <FooterHeading>Newsletter</FooterHeading>
+            <FooterHeading>{t('footer.newsletter')}</FooterHeading>
             <p className="mt-3 text-sm leading-relaxed text-white/60">
-              Monthly market intel on Nairobi&rsquo;s finest listings — off-market homes reach
-              subscribers first.
+              {t('footer.newsletterBlurb')}
             </p>
             <form onSubmit={e => void subscribe(e)} className="mt-4 flex flex-col gap-2 sm:flex-row">
               <Input
@@ -856,7 +918,7 @@ export function DelimaFooter() {
                 value={subEmail}
                 onChange={e => setSubEmail(e.target.value)}
                 placeholder="you@example.com"
-                aria-label="Email address for the Delima newsletter"
+                aria-label={t('footer.newsletterAria')}
                 className="min-h-[44px] flex-1 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-sun"
               />
               <Button
@@ -866,10 +928,10 @@ export function DelimaFooter() {
                 className="btn-sun min-h-[44px] gap-2 rounded-full px-5 text-sm font-bold"
               >
                 {subscribing && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-                {subscribing ? 'Joining…' : 'Subscribe'}
+                {subscribing ? t('footer.joining') : t('footer.subscribe')}
               </Button>
             </form>
-            <p className="mt-2 text-[11px] text-white/40">No spam. Unsubscribe anytime.</p>
+            <p className="mt-2 text-[11px] text-white/40">{t('footer.noSpam')}</p>
           </div>
         </Reveal>
       </div>
@@ -877,26 +939,33 @@ export function DelimaFooter() {
       {/* bottom bar */}
       <div className="border-t border-white/10">
         <div className="container-page flex flex-col items-center justify-between gap-2 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-xs text-white/45 sm:flex-row">
-          <p>© 2026 Delima Realtors. All rights reserved.</p>
+          <p>{t('footer.rights')}</p>
           <nav aria-label="Legal" className="flex items-center gap-5">
+            <button
+              type="button"
+              onClick={openAccount}
+              className="transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
+            >
+              {t('nav.account')}
+            </button>
             <a
               href="#"
               className="transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
             >
-              Privacy
+              {t('footer.privacy')}
             </a>
             <a
               href="#"
               className="transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
             >
-              Terms
+              {t('footer.terms')}
             </a>
             <button
               type="button"
               onClick={openAdmin}
               className="transition-colors hover:text-sun focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun"
             >
-              Staff Login
+              {t('footer.staffLogin')}
             </button>
           </nav>
         </div>

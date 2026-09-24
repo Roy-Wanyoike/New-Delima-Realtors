@@ -79,6 +79,7 @@ model Property {
   rating         Float        @default(4.5)
   views          Int          @default(0)
   leads          Lead[]
+  savedBy        SavedProperty[]
   createdAt      DateTime     @default(now())
 
   @@index([status, type])
@@ -124,4 +125,57 @@ model Subscriber {
   email     String   @unique
   source    String   @default("NEWSLETTER")
   createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Buyer accounts (issue #59) — email + password auth with DB-backed sessions.
+// Passwords: scrypt (salt:hash hex); sessions: random 32-byte token sent as an
+// httpOnly cookie, only its SHA-256 digest is persisted (tokenHash).
+// ---------------------------------------------------------------------------
+
+model Buyer {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  name           String
+  phone          String          @default("")
+  passwordHash   String
+  sessions       BuyerSession[]
+  savedProperties SavedProperty[]
+  savedSearches  SavedSearch[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model BuyerSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  buyerId   String
+  buyer     Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([buyerId])
+}
+
+model SavedProperty {
+  id         String   @id @default(cuid())
+  buyerId    String
+  buyer      Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([buyerId, propertyId])
+  @@index([buyerId])
+}
+
+model SavedSearch {
+  id        String   @id @default(cuid())
+  buyerId   String
+  buyer     Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  name      String
+  queryJson String   @default("{}") // JSON snapshot of FilterState
+  createdAt DateTime @default(now())
+
+  @@index([buyerId])
 }

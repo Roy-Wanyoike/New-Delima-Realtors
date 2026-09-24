@@ -43,6 +43,7 @@ import { Container, Reveal, StatBlock, Pill } from '@/components/delima/ui-kit'
 import { useInsights, useProperties } from '@/hooks/use-delima-data'
 import { useToast } from '@/hooks/use-toast'
 import { useAppStore } from '@/lib/store'
+import { useI18n } from '@/lib/i18n'
 import { formatKes, formatSqm, typeLabel } from '@/lib/format'
 import { PROPERTY_TYPES, type PropertyType, type ValuationResult } from '@/lib/types'
 import { cn, fetchWithTimeout } from '@/lib/utils'
@@ -113,6 +114,7 @@ function AnalyzingCard() {
 
 function ResultCard({ result, email, onRestart }: { result: ValuationResult; email: string; onRestart: () => void }) {
   const setView = useAppStore((s) => s.setView)
+  const { t } = useI18n()
   const { toast } = useToast()
   const [alertsState, setAlertsState] = useState<'idle' | 'loading' | 'saved'>('idle')
 
@@ -149,7 +151,7 @@ function ResultCard({ result, email, onRestart }: { result: ValuationResult; ema
     <div className="space-y-5">
       {/* price range */}
       <div className="card-modern p-5 sm:p-6">
-        <p className="eyebrow">Your AI valuation</p>
+        <p className="eyebrow">{t('valuation.resultEyebrow')}</p>
         <p className="mt-4 text-sm text-muted-foreground">Estimated market range</p>
         <p className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
           {formatKes(result.lowKes)} <span className="text-muted-foreground">—</span> {formatKes(result.highKes)}
@@ -205,7 +207,7 @@ function ResultCard({ result, email, onRestart }: { result: ValuationResult; ema
 
       {/* narrative */}
       <div className="card-modern p-6">
-        <p className="eyebrow mb-3">Valuer&apos;s notes</p>
+        <p className="eyebrow mb-3">{t('valuation.notesEyebrow')}</p>
         <div className="space-y-3">
           {paragraphs.map((p, i) => (
             <p key={i} className="text-sm leading-relaxed text-muted-foreground">{p}</p>
@@ -215,7 +217,7 @@ function ResultCard({ result, email, onRestart }: { result: ValuationResult; ema
 
       {/* comparables */}
       <div>
-        <p className="eyebrow mb-3">Comparable listings used</p>
+        <p className="eyebrow mb-3">{t('valuation.compsEyebrow')}</p>
         <div className="overflow-hidden rounded-2xl border border-line bg-white">
           <Table>
             <TableHeader>
@@ -561,17 +563,17 @@ function AsidePanel() {
 /* ------------------------------------------------------------------ */
 
 export default function ValuationView() {
+  const { t } = useI18n()
   return (
     <Container className="py-10 sm:py-16">
       <Reveal>
         <header className="max-w-2xl">
-          <p className="eyebrow">Instant valuation</p>
+          <p className="eyebrow">{t('valuation.eyebrow')}</p>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-            What&apos;s your home worth?
+            {t('valuation.titleFull')}
           </h1>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            Our engine benchmarks your property against live Delima inventory, adjusts for condition
-            and vintage, and returns a confidence-scored range in seconds.
+            {t('valuation.heroSub')}
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Pill tone="brand">60-second estimate</Pill>

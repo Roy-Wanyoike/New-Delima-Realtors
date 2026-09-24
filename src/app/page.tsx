@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic'
 import { useAppStore } from '@/lib/store'
 import { DelimaHeader, DelimaFooter, MobileNav } from '@/components/delima/shell'
 import { WhatsAppFloat } from '@/components/delima/ui-kit'
+import { useAccountBootstrapper } from '@/hooks/use-saved'
 import HomeView from '@/components/delima/home-view'
 import PropertiesView from '@/components/delima/properties-view'
 import PropertyDetail from '@/components/delima/property-detail'
@@ -34,9 +35,11 @@ const InsightsView = dynamic(() => import('@/components/delima/insights-view'), 
 const FinanceView = dynamic(() => import('@/components/delima/finance-view'), { ssr: false, loading: ViewSkeleton })
 const AdminView = dynamic(() => import('@/components/delima/admin-view'), { ssr: false, loading: ViewSkeleton })
 const ValuationView = dynamic(() => import('@/components/delima/valuation-view'), { ssr: false, loading: ViewSkeleton })
+const AccountView = dynamic(() => import('@/components/delima/account-view'), { ssr: false, loading: ViewSkeleton })
 
 export default function Page() {
   const view = useAppStore(s => s.view)
+  useAccountBootstrapper()
 
   return (
     <div className="flex min-h-screen flex-col bg-paper">
@@ -51,6 +54,7 @@ export default function Page() {
         {view === 'finance' && <FinanceView />}
         {view === 'admin' && <AdminView />}
         {view === 'valuation' && <ValuationView />}
+        {view === 'account' && <AccountView />}
       </main>
       <DelimaFooter />
       <MobileNav />
