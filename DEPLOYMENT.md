@@ -25,15 +25,26 @@ framework explicitly, which overrides the stale dashboard preset:
 ```json
 {
   "framework": "nextjs",
-  "installCommand": "bun install --frozen-lockfile",
-  "buildCommand": "prisma generate --schema prisma/schema.postgres.prisma && next build"
+  "installCommand": "bun install --frozen-lockfile && bunx prisma generate --schema prisma/schema.postgres.prisma",
+  "buildCommand": "next build",
+  "git": { "deploymentEnabled": { "main": true } }
 }
 ```
 
 With `framework: "nextjs"`, Vercel auto-detects the `.next` output, runs
 `next build` itself, and the Output Directory setting is no longer consulted.
-The build command also generates the **Postgres** Prisma client (serverless
-functions cannot talk to a local SQLite file).
+
+**Second incident — `The Next.js output directory ".vercel/output" was not
+found`.** Pinning the framework fixed recognition, but our first attempt used
+a *custom* build command (`prisma generate … && next build`). Vercel's Next.js
+adapter only produces the Build Output API (`.vercel/output`) when the build
+classifies as the framework's standard build; chaining another command before
+`next build` opts the build out of that pipeline, so the adapter found no
+`.vercel/output` after the build succeeded. Fix: keep `buildCommand` as the
+plain framework default (`next build`) and move the Prisma client generation
+into `installCommand`, which runs before the build either way. The generated
+client is the **Postgres** one (serverless functions cannot talk to a local
+SQLite file).
 
 `next.config.ts` additionally disables the `standalone` output on Vercel
 (`output: process.env.VERCEL ? undefined : "standalone"`), since standalone is
@@ -150,6 +161,7 @@ seeing a regression.
 | Symptom | Cause & fix |
 |---|---|
 | `No Output Directory named "output"` | Stale dashboard preset. Fixed by `vercel.json#framework`; also set Framework Preset to **Next.js** in dashboard settings for belt-and-braces. |
+| `The Next.js output directory ".vercel/output" was not found` | The build command was customized (anything chained before `next build`). `vercel.json` now keeps `buildCommand: "next build"` plain and does Prisma generation in `installCommand`. Do **not** chain extra commands into the build command; and in dashboard settings leave **Output Directory empty**. |
 | `P1001: can't reach database` in functions | Wrong pooler/port. Runtime must use **port 6543 + pgbouncer=true**, not 5432. |
 | `Error: PostgreSQL username must be URL-encoded` | Password contains special chars — URL-encode it (`@` → `%40`). |
 | Site deploys but shows no listings | `DATABASE_URL` missing in Vercel env, or seed (`npm run db:pg:seed`) never ran. |
